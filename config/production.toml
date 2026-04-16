@@ -1,0 +1,60 @@
+﻿# Production Configuration
+[general]
+app_name = "AppBlocker"
+version = "1.0.0"
+log_level = "WARN"
+
+[monitoring]
+interval_ms = 800
+validation_delay_ms_min = 300
+validation_delay_ms_max = 800
+rate_limit_per_minute = 3
+
+[behavior_scoring]
+enabled = true
+score_threshold = 70
+
+[behavior_scoring.weights]
+cpu_spike = 15
+rapid_spawn = 20
+suspicious_path = 25
+hidden_process = 20
+renamed_exe = 30
+
+[kill_policy]
+grace_period_seconds = 1
+rate_limit_per_minute = 3
+
+[kill_policy.checks]
+cpu_state = true
+process_stability = true
+parent_chain = true
+not_system_owned = true
+
+[overlay]
+title = "Peringatan Keamanan"
+message = "Aplikasi terlarang terdeteksi dan telah ditutup."
+failsafe_timeout_minutes = 30
+focus_interval_ms = 500
+
+[overlay.block_keys]
+keys = ["Alt+F4", "Escape"]
+
+[security]
+max_attempts = 3
+lockout_duration_seconds = 600
+memory_zeroing = true
+enable_whitelist = true
+
+[logging]
+path = "C:\\AppBlocker\\reports"
+rotation_enabled = true
+retention_days = 30
+
+[resource_limits]
+max_cpu_percent = 15
+max_memory_mb = 150
+
+[system_safety]
+single_instance = true
+lock_file = "C:\\AppBlocker\\app.lock"
