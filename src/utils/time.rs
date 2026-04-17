@@ -1,6 +1,6 @@
 ﻿//! Time Module
 
-use chrono::{DateTime, Utc, Local, TimeZone};
+use chrono::{DateTime, Local, TimeZone, Utc};
 
 /// Get current UTC timestamp
 pub fn now_utc() -> DateTime<Utc> {
