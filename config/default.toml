@@ -1,0 +1,112 @@
+# App Blocker - Konfigurasi Default
+# Dikembangkan oleh Muhamad Fahmi, Asisten Kepala Lab Komputer
+# Versi: 1.0.0
+
+[app]
+mode = "production"
+startup_delay_seconds = 15
+max_cpu_usage_percent = 20
+max_memory_mb = 200
+
+[monitoring]
+scan_interval_ms = 2000
+validation_delay_ms = [300, 1000]
+adaptive_interval = true
+
+[blocking]
+kill_rate_limit_per_minute = 3
+grace_period_seconds = [1, 2]
+behavior_scoring_enabled = true
+score_threshold = 70
+whitelist = []
+
+[[blocking.blacklist]]
+name = "Roblox"
+process_names = ["RobloxPlayerBeta.exe"]
+paths = [
+  "C:\\Program Files (x86)\\Roblox\\",
+  "C:\\Users\\*\\AppData\\Local\\Roblox\\"
+]
+description = "Platform game Roblox"
+
+[[blocking.blacklist]]
+name = "Valorant"
+process_names = ["VALORANT-Win64-Shipping.exe"]
+paths = ["C:\\Riot Games\\VALORANT\\"]
+description = "Game Valorant (Riot Games)"
+
+[[blocking.blacklist]]
+name = "Steam"
+process_names = ["steam.exe"]
+paths = ["C:\\Program Files (x86)\\Steam\\"]
+description = "Platform Steam"
+
+[[blocking.blacklist]]
+name = "Epic Games"
+process_names = ["EpicGamesLauncher.exe"]
+paths = ["C:\\Program Files (x86)\\Epic Games\\"]
+description = "Epic Games Launcher"
+
+[[blocking.blacklist]]
+name = "Mobile Legends PC"
+process_names = ["mlbbpc.exe", "MobileLegends.exe"]
+paths = []
+description = "Mobile Legends Bang Bang PC"
+
+[[blocking.blacklist]]
+name = "Free Fire"
+process_names = ["FFGame.exe"]
+paths = []
+description = "Garena Free Fire"
+
+[schedule]
+enabled = true
+timezone = "Asia/Jakarta"
+
+[[schedule.rules]]
+days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
+start = "07:00"
+end = "15:00"
+action = "block_games"
+
+[[schedule.rules]]
+days = ["Saturday"]
+start = "07:00"
+end = "12:00"
+action = "block_games"
+
+[overlay]
+focus_interval_ms = 500
+failsafe_timeout_minutes = 30
+max_unlock_attempts = 5
+lockout_duration_seconds = 300
+show_process_info = true
+show_timestamp = true
+show_pc_name = true
+show_attempt_counter = true
+
+[logging]
+path = "C:\\AppBlocker\\logs"
+level = "info"
+rotation_days = 7
+structured = true
+
+[security]
+max_auth_attempts = 5
+backoff_base_seconds = 5
+lockout_duration_seconds = 300
+memory_zero_on_drop = true
+anti_debugging = true
+check_disable_flag_interval_ms = 2000
+
+[watchdog]
+heartbeat_interval_ms = 1000
+max_missed_heartbeats = 5
+max_restart_attempts = 3
+deadlock_timeout_ms = 5000
+
+[simulation]
+enabled = false
+simulate_process_kill = false
+simulate_overlay = false
+log_only = false

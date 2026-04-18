@@ -1,0 +1,24 @@
+{
+  "_comment": "Format: tambah SATU aplikasi ke blacklist",
+  "_usage": "app_blocker.exe add-blacklist --file blacklist_single.json",
+  "_version": "1.0",
+
+  "name": "Minecraft",
+  "process_names": [
+    "javaw.exe",
+    "Minecraft.exe",
+    "MinecraftLauncher.exe"
+  ],
+  "paths": [
+    "C:\\Program Files (x86)\\Minecraft Launcher\\",
+    "C:\\Users\\*\\AppData\\Roaming\\.minecraft\\"
+  ],
+  "description": "Game Minecraft - diblokir selama jam pelajaran",
+
+  "optional": {
+    "score_override": null,
+    "block_usb": true,
+    "block_portable": true,
+    "notes": "Termasuk launcher resmi dan portable version"
+  }
+}

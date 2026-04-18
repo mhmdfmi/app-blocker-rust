@@ -1,0 +1,100 @@
+[package]
+name = "app_blocker"
+version = "1.1.0"
+edition = "2021"
+authors = ["Muhamad Fahmi <fahmi@lab.komputer>"]
+description = "Production-ready Windows App Blocker - real-time monitoring, secure process termination, overlay lock UI, authentication, audit logging"
+license = "MIT"
+rust-version = "1.70"
+
+[lib]
+name = "app_blocker_lib"
+path = "src/lib.rs"
+
+[[bin]]
+name = "app_blocker"
+path = "src/main.rs"
+
+[profile.release]
+opt-level = 3
+lto = true
+panic = "abort"
+strip = true
+
+[profile.dev]
+panic = "abort"
+
+[features]
+default = []
+simulation = []
+
+[dependencies]
+# Error handling
+thiserror = "1.0"
+anyhow = "1.0"
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+toml = "0.8"
+serde_yaml = "0.9"
+
+# Logging & tracing
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt", "json", "time"] }
+tracing-appender = "0.2"
+
+# Authentication & Security
+argon2 = "0.5"
+rand = "0.8"
+zeroize = { version = "1.7", features = ["derive"] }
+
+# CLI
+clap = { version = "4.4", features = ["derive", "env"] }
+
+# Process monitoring
+sysinfo = "0.30"
+
+# Environment variables
+dotenvy = "0.15"
+
+# Time
+chrono = { version = "0.4", features = ["serde"] }
+
+# UUID untuk trace ID
+uuid = { version = "1.6", features = ["v4"] }
+
+# File watching untuk hot reload
+notify = "6.1"
+
+# Regex untuk pattern matching
+regex = "1.10"
+
+# SHA256 untuk integrity check
+sha2 = "0.10"
+hex = "0.4"
+
+# Graceful shutdown
+ctrlc = { version = "3.4", features = ["termination"] }
+
+# Hostname
+hostname = "0.3"
+
+[target.'cfg(windows)'.dependencies]
+windows = { version = "0.52", features = [
+    "Win32_Foundation",
+    "Win32_UI_WindowsAndMessaging",
+    "Win32_UI_Input_KeyboardAndMouse",
+    "Win32_Graphics_Gdi",
+    "Win32_System_Threading",
+    "Win32_System_LibraryLoader",
+    "Win32_Security",
+    "Win32_System_Console",
+    "Win32_System_Registry",
+    "Win32_System_SystemInformation",
+    "Win32_System_Diagnostics_Debug",
+    "Win32_System_Diagnostics_ToolHelp",
+] }
+
+[dev-dependencies]
+tempfile = "3.9"

@@ -1,0 +1,76 @@
+{
+  "_comment": "Format: tambah BANYAK aplikasi sekaligus ke blacklist",
+  "_usage": "app_blocker.exe add-blacklist --file blacklist_bulk.json",
+  "_version": "1.0",
+
+  "entries": [
+    {
+      "name": "Minecraft",
+      "process_names": ["javaw.exe", "MinecraftLauncher.exe"],
+      "paths": [
+        "C:\\Program Files (x86)\\Minecraft Launcher\\",
+        "C:\\Users\\*\\AppData\\Roaming\\.minecraft\\"
+      ],
+      "description": "Game Minecraft"
+    },
+    {
+      "name": "Mobile Legends: Bang Bang",
+      "process_names": ["mlbbpc.exe", "MobileLegends.exe"],
+      "paths": [
+        "C:\\Program Files\\MLBB\\",
+        "C:\\Users\\*\\AppData\\Local\\MLBB\\"
+      ],
+      "description": "Mobile Legends versi PC"
+    },
+    {
+      "name": "Garena Free Fire",
+      "process_names": ["FFGame.exe", "GarenaFF.exe"],
+      "paths": [
+        "C:\\Program Files\\Garena\\Free Fire\\"
+      ],
+      "description": "Free Fire via Garena Launcher"
+    },
+    {
+      "name": "PUBG",
+      "process_names": ["TslGame.exe", "PUBG.exe"],
+      "paths": [
+        "C:\\Program Files (x86)\\Steam\\steamapps\\common\\PUBG\\"
+      ],
+      "description": "PlayerUnknown's Battlegrounds"
+    },
+    {
+      "name": "GTA V",
+      "process_names": ["GTA5.exe", "GTAVLauncher.exe", "PlayGTAV.exe"],
+      "paths": [
+        "C:\\Program Files\\Rockstar Games\\Grand Theft Auto V\\",
+        "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Grand Theft Auto V\\"
+      ],
+      "description": "Grand Theft Auto V"
+    },
+    {
+      "name": "League of Legends",
+      "process_names": ["LeagueClient.exe", "League of Legends.exe"],
+      "paths": [
+        "C:\\Riot Games\\League of Legends\\"
+      ],
+      "description": "League of Legends (Riot Games)"
+    },
+    {
+      "name": "Counter-Strike 2",
+      "process_names": ["cs2.exe", "csgo.exe"],
+      "paths": [
+        "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Counter-Strike Global Offensive\\",
+        "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Counter-Strike 2\\"
+      ],
+      "description": "Counter-Strike 2 / CS:GO"
+    },
+    {
+      "name": "Dota 2",
+      "process_names": ["dota2.exe"],
+      "paths": [
+        "C:\\Program Files (x86)\\Steam\\steamapps\\common\\dota 2 beta\\"
+      ],
+      "description": "Dota 2 (Valve)"
+    }
+  ]
+}
