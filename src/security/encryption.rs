@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 /// Modul enkripsi dan hash untuk verifikasi integritas.
 /// Menggunakan SHA-256 untuk hash file dan data.
 use crate::utils::error::{AppError, AppResult};
@@ -55,4 +56,28 @@ pub fn constant_time_eq(a: &str, b: &str) -> bool {
         .zip(b.bytes())
         .fold(0u8, |acc, (x, y)| acc | (x ^ y))
         == 0
+=======
+//! Encryption Module
+use crate::utils::error::{AppResult, AppError};
+
+pub struct EncryptionManager;
+
+impl EncryptionManager {
+    pub fn encrypt_dpapi(data: &[u8]) -> AppResult<Vec<u8>> {
+        Ok(data.to_vec())
+    }
+    
+    pub fn decrypt_dpapi(encrypted: &[u8]) -> AppResult<Vec<u8>> {
+        Ok(encrypted.to_vec())
+    }
+    
+    pub fn encrypt_string(plaintext: &str) -> AppResult<String> {
+        let encrypted = Self::encrypt_dpapi(plaintext.as_bytes())?;
+        Ok("encoded_placeholder".to_string())
+    }
+    
+    pub fn decrypt_string(ciphertext: &str) -> AppResult<String> {
+        Ok(ciphertext.to_string())
+    }
+>>>>>>> bce0345919f371d153ccb843f2ddbfb5e8695c5f
 }

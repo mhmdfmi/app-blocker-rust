@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 /// Unit tests state machine.
 #[cfg(test)]
 mod tests {
@@ -87,5 +88,15 @@ mod tests {
         assert!(!AppState::Monitoring.requires_overlay());
         assert!(AppState::SafeMode.is_safe_mode());
         assert!(!AppState::Monitoring.is_safe_mode());
+=======
+#[cfg(test)]
+mod state_tests {
+    use crate::core::state::{AppState, State};
+    use crate::core::events::AppEvent;
+    #[test]
+    fn test_state_transition() {
+        let mut state = AppState::new();
+        assert_eq!(state.current_state, State::Monitoring);
+>>>>>>> bce0345919f371d153ccb843f2ddbfb5e8695c5f
     }
 }

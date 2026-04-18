@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 /// Unit tests untuk engine deteksi dan integrasi.
 #[cfg(test)]
 mod tests {
@@ -88,5 +89,13 @@ mod tests {
         let svc = WindowsProcessService::new(true);
         assert!(!svc.is_protected("steam.exe"),  "steam.exe bukan protected");
         assert!(!svc.is_protected("badgame.exe"),"badgame.exe bukan protected");
+=======
+#[cfg(test)]
+mod engine_tests {
+    #[test]
+    fn test_engine_create() {
+        // Placeholder test
+        assert!(true);
+>>>>>>> bce0345919f371d153ccb843f2ddbfb5e8695c5f
     }
 }

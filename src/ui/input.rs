@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 /// Penanganan input pengguna pada overlay: pembacaan password, keyboard hook.
 use crate::security::memory::SecureString;
 use crate::utils::error::{AppError, AppResult};
@@ -90,4 +91,31 @@ pub mod vkeys {
     pub const VK_BACK: u32   = 0x08;
     pub const VK_F4: u32     = 0x73;
     pub const VK_DELETE: u32 = 0x2E;
+=======
+//! Input Handling Module
+
+pub struct InputHandler;
+
+impl InputHandler {
+    pub fn handle_keypress(key_code: u32) -> Option<InputAction> {
+        match key_code {
+            0x1B => Some(InputAction::Escape),
+            0x70 => Some(InputAction::F1),
+            0x71 => Some(InputAction::F2),
+            0x72 => Some(InputAction::F3),
+            0x73 => Some(InputAction::F4),
+            _ => None,
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub enum InputAction {
+    Escape,
+    F1,
+    F2,
+    F3,
+    F4,
+    EmergencyUnlock,
+>>>>>>> bce0345919f371d153ccb843f2ddbfb5e8695c5f
 }

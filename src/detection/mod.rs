@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 /// Mesin deteksi terpadu - menggabungkan semua detektor.
 pub mod behavior;
 pub mod bypass;
@@ -126,3 +127,6 @@ impl DetectionEngine {
         Ok(None)
     }
 }
+=======
+pub mod game_detector;
+>>>>>>> bce0345919f371d153ccb843f2ddbfb5e8695c5f

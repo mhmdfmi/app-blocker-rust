@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # App Blocker — Sistem Pemblokiran Aplikasi Lab Komputer
 
 [![Build](https://github.com/fahmi/app_blocker/actions/workflows/ci.yml/badge.svg)](https://github.com/fahmi/app_blocker/actions)
@@ -272,3 +273,23 @@ MIT License — Lihat [LICENSE](LICENSE)
 
 *Dikembangkan oleh **Muhamad Fahmi**, Asisten Kepala Lab Komputer*
 *This program was developed by Muhamad Fahmi, Assistant Head of the Computer Lab.*
+=======
+# App Blocker
+
+Production-ready Windows Application Blocker dengan real-time monitoring.
+
+## Fitur
+
+- Real-time Monitoring
+- Blacklist Detection
+- Safe Process Termination
+- Fullscreen Overlay Lock
+- Admin Password Unlock
+- Secure Logging
+
+## Build
+
+```powershell
+cargo build --release
+```
+>>>>>>> bce0345919f371d153ccb843f2ddbfb5e8695c5f

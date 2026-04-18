@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # CHANGELOG
 
 Format mengikuti [Keep a Changelog](https://keepachangelog.com/id/1.0.0/)
@@ -66,3 +67,22 @@ dan [Semantic Versioning](https://semver.org/lang/id/).
 - Windows Service install/uninstall via PowerShell
 - GitHub Actions CI/CD pipeline
 - Unit tests: auth, state, engine (18 test total)
+=======
+# Changelog
+
+## [1.0.0] - 2026-04-16
+
+### Added
+- Initial release
+- Core state machine (Monitoring, Blocking, Locked, Recovering, SafeMode)
+- Process monitor thread
+- UI overlay with Win32 API
+- Authentication with Argon2
+- Security modules (encryption, memory, integrity)
+- Process management dengan protected process check
+- Configuration system dengan TOML
+- Structured logging dengan rotation
+- Simulation mode for testing
+- Service management scripts
+- CI/CD pipeline
+>>>>>>> bce0345919f371d153ccb843f2ddbfb5e8695c5f

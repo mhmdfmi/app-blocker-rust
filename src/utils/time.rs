@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 /// Utilitas waktu dengan dukungan timezone Asia/Jakarta (WIB, UTC+7).
 use chrono::{DateTime, Datelike, Local, NaiveTime, Timelike, Utc, Weekday};
 
@@ -8,15 +9,27 @@ pub const TIMESTAMP_FORMAT: &str = "%Y-%m-%d %H:%M:%S%.3f";
 pub const WIB_OFFSET_HOURS: i32 = 7;
 
 /// Mendapatkan timestamp UTC saat ini
+=======
+﻿//! Time Module
+
+use chrono::{DateTime, Utc, Local, TimeZone};
+
+/// Get current UTC timestamp
+>>>>>>> bce0345919f371d153ccb843f2ddbfb5e8695c5f
 pub fn now_utc() -> DateTime<Utc> {
     Utc::now()
 }
 
+<<<<<<< HEAD
 /// Mendapatkan timestamp lokal saat ini
+=======
+/// Get current local timestamp
+>>>>>>> bce0345919f371d153ccb843f2ddbfb5e8695c5f
 pub fn now_local() -> DateTime<Local> {
     Local::now()
 }
 
+<<<<<<< HEAD
 /// Format datetime ke string standar
 pub fn format_datetime(dt: &DateTime<Utc>) -> String {
     dt.format(TIMESTAMP_FORMAT).to_string()
@@ -100,4 +113,19 @@ pub fn format_duration_seconds(seconds: u64) -> String {
     } else {
         format!("{}j {}m", seconds / 3600, (seconds % 3600) / 60)
     }
+=======
+/// Format timestamp untuk logging
+pub fn format_timestamp(dt: &DateTime<Utc>) -> String {
+    dt.format("%Y-%m-%d %H:%M:%S%.3f UTC").to_string()
+}
+
+/// Format untuk filename
+pub fn format_for_filename(dt: &DateTime<Utc>) -> String {
+    dt.format("%Y%m%d_%H%M%S").to_string()
+}
+
+/// Sleep dengan durasi
+pub fn sleep_ms(ms: u64) {
+    std::thread::sleep(std::time::Duration::from_millis(ms));
+>>>>>>> bce0345919f371d153ccb843f2ddbfb5e8695c5f
 }

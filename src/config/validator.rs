@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 /// Validator skema konfigurasi - memastikan semua nilai dalam rentang yang aman.
 use crate::config::settings::AppConfig;
 use crate::utils::error::{AppError, AppResult};
@@ -127,5 +128,18 @@ fn validate_watchdog(config: &AppConfig) -> AppResult<()> {
         ));
     }
 
+=======
+//! Validator Module
+use crate::utils::error::{AppResult, AppError};
+use crate::system::user::UserInfo;
+pub fn validate_permissions() -> AppResult<()> {
+    let user = UserInfo::current().map_err(|e| AppError::AuthError(e.to_string()))?;
+    if !user.is_admin { tracing::warn!("No admin"); }
+    Ok(())
+}
+pub fn validate_config() -> AppResult<()> { Ok(()) }
+pub fn validate_blacklist(blacklist: &[String]) -> AppResult<()> {
+    if blacklist.is_empty() { return Err(AppError::ConfigError("empty".into())); }
+>>>>>>> bce0345919f371d153ccb843f2ddbfb5e8695c5f
     Ok(())
 }

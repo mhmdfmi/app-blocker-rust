@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 /// Primitif manajemen window Win32.
 use crate::utils::error::{AppError, AppResult};
 
@@ -25,4 +26,16 @@ pub mod msg {
     pub const WM_APP_UNLOCK_SUCCESS: u32 = 0x8001;
     pub const WM_APP_CLOSE_OVERLAY:  u32 = 0x8003;
     pub const WM_APP_SHAKE:          u32 = 0x8004;
+=======
+//! Window Management Module
+
+pub struct WindowManager;
+
+impl WindowManager {
+    pub fn create_blocking_window(_title: &str) -> bool {
+        // Simplified - in production would create actual Win32 window
+        tracing::debug!("Creating blocking window (simulated)");
+        true
+    }
+>>>>>>> bce0345919f371d153ccb843f2ddbfb5e8695c5f
 }
