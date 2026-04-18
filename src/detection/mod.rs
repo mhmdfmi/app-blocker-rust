@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 /// Mesin deteksi terpadu - menggabungkan semua detektor.
 pub mod behavior;
 pub mod bypass;
@@ -43,11 +42,14 @@ impl DetectionEngine {
             vec![".exe".to_string(), ".lnk".to_string()],
         )?;
 
-        let bypass_detector  = BypassDetector::new(&config.blocking.blacklist);
+        let bypass_detector = BypassDetector::new(&config.blocking.blacklist);
         let schedule_service = ScheduleService::new(&config.schedule)?;
-        let behavior_scorer  = BehaviorScorer::new(config.blocking.score_threshold);
+        let behavior_scorer = BehaviorScorer::new(config.blocking.score_threshold);
 
-        let whitelist = config.blocking.whitelist.iter()
+        let whitelist = config
+            .blocking
+            .whitelist
+            .iter()
             .map(|s| s.to_lowercase())
             .collect();
 
@@ -66,7 +68,11 @@ impl DetectionEngine {
     pub fn detect(&mut self, proc: &ProcessInfo) -> AppResult<Option<DetectionResult>> {
         // 0. Whitelist - prioritas tertinggi
         let name_lower = proc.name.to_lowercase();
-        if self.whitelist.iter().any(|w| name_lower.contains(w.as_str())) {
+        if self
+            .whitelist
+            .iter()
+            .any(|w| name_lower.contains(w.as_str()))
+        {
             debug!(name = %proc.name, "Proses di whitelist, dilewati");
             return Ok(None);
         }
@@ -103,10 +109,18 @@ impl DetectionEngine {
             if behavior.has_any() {
                 let bs = behavior.score();
                 total_score += bs;
-                if behavior.high_cpu      { reasons.push("high_cpu".to_string()); }
-                if behavior.rapid_spawn   { reasons.push("rapid_spawn".to_string()); }
-                if behavior.hidden_process{ reasons.push("hidden_process".to_string()); }
-                if behavior.suspicious_path{reasons.push("suspicious_path".to_string()); }
+                if behavior.high_cpu {
+                    reasons.push("high_cpu".to_string());
+                }
+                if behavior.rapid_spawn {
+                    reasons.push("rapid_spawn".to_string());
+                }
+                if behavior.hidden_process {
+                    reasons.push("hidden_process".to_string());
+                }
+                if behavior.suspicious_path {
+                    reasons.push("suspicious_path".to_string());
+                }
             }
         }
 
@@ -120,13 +134,14 @@ impl DetectionEngine {
                 game = ?matched_game,
                 "BLOKIR"
             );
-            return Ok(Some(DetectionResult { score: total_score, matched_game, reasons }));
+            return Ok(Some(DetectionResult {
+                score: total_score,
+                matched_game,
+                reasons,
+            }));
         }
 
         debug!(pid = proc.pid, name = %proc.name, score = total_score, "AMAN");
         Ok(None)
     }
 }
-=======
-pub mod game_detector;
->>>>>>> bce0345919f371d153ccb843f2ddbfb5e8695c5f

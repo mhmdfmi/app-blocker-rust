@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 /// Konstanta pesan UI dalam Bahasa Indonesia.
 
 // === Judul & Header ===
@@ -24,8 +23,7 @@ pub const OVERLAY_USER_FORMAT: &str = "Pengguna: {}";
 // === Status Unlock ===
 pub const MSG_UNLOCK_SUCCESS: &str = "✓ Kata sandi benar. Akses diberikan.";
 pub const MSG_UNLOCK_FAILED: &str = "✗ Kata sandi salah. Coba lagi.";
-pub const MSG_UNLOCK_LOCKED_OUT: &str =
-    "✗ Terlalu banyak percobaan gagal. Tunggu {} detik.";
+pub const MSG_UNLOCK_LOCKED_OUT: &str = "✗ Terlalu banyak percobaan gagal. Tunggu {} detik.";
 pub const MSG_UNLOCK_COOLDOWN: &str = "Harap tunggu {} detik sebelum mencoba lagi.";
 
 // === CLI Messages ===
@@ -67,9 +65,3 @@ pub const ERR_CHANNEL_DISCONNECT: &str = "Koneksi channel terputus";
 pub const ERR_THREAD_PANIC: &str = "Thread mengalami panic";
 pub const ERR_DEADLOCK_DETECTED: &str = "Potensi deadlock terdeteksi";
 pub const ERR_SINGLE_INSTANCE: &str = "Aplikasi sudah berjalan";
-=======
-//! Messages Module
-pub const OVERLAY_TITLE: &str = "Peringatan Keamanan";
-pub const OVERLAY_MESSAGE: &str = "Aplikasi terlarang terdeteksi dan telah ditutup.";
-pub const FOOTER: &str = "This program was developed by Muhamad Fahmi, Assistant Head of the Computer Lab.";
->>>>>>> bce0345919f371d153ccb843f2ddbfb5e8695c5f

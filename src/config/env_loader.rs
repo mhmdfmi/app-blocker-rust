@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 /// Loader untuk file .env - memuat kredensial dan pengaturan sensitif.
 /// Tidak menyimpan plaintext, hanya hash.
 use crate::utils::error::{AppError, AppResult};
@@ -37,8 +36,7 @@ pub fn load_env(env_path: &Path) -> AppResult<EnvVars> {
 
 /// Baca variabel yang sudah dimuat ke environment
 pub fn read_env_vars() -> AppResult<EnvVars> {
-    let admin_password_hash = std::env::var("ADMIN_PASSWORD_HASH")
-        .unwrap_or_default();
+    let admin_password_hash = std::env::var("ADMIN_PASSWORD_HASH").unwrap_or_default();
 
     Ok(EnvVars {
         admin_password_hash,
@@ -50,8 +48,8 @@ pub fn read_env_vars() -> AppResult<EnvVars> {
 /// Tulis hash password baru ke file .env
 pub fn write_password_hash(env_path: &Path, hash: &str) -> AppResult<()> {
     let content = if env_path.exists() {
-        let existing = std::fs::read_to_string(env_path)
-            .map_err(|e| AppError::io("Baca .env", e))?;
+        let existing =
+            std::fs::read_to_string(env_path).map_err(|e| AppError::io("Baca .env", e))?;
         update_env_value(&existing, "ADMIN_PASSWORD_HASH", hash)
     } else {
         format!(
@@ -63,8 +61,7 @@ pub fn write_password_hash(env_path: &Path, hash: &str) -> AppResult<()> {
         )
     };
 
-    std::fs::write(env_path, content)
-        .map_err(|e| AppError::io("Tulis .env", e))?;
+    std::fs::write(env_path, content).map_err(|e| AppError::io("Tulis .env", e))?;
 
     info!("Hash password berhasil diperbarui di .env");
     Ok(())
@@ -103,12 +100,10 @@ fn create_default_env(env_path: &Path) -> AppResult<()> {
                    LOG_LEVEL=info\n";
 
     if let Some(parent) = env_path.parent() {
-        std::fs::create_dir_all(parent)
-            .map_err(|e| AppError::io("Buat direktori .env", e))?;
+        std::fs::create_dir_all(parent).map_err(|e| AppError::io("Buat direktori .env", e))?;
     }
 
-    std::fs::write(env_path, content)
-        .map_err(|e| AppError::io("Buat .env default", e))?;
+    std::fs::write(env_path, content).map_err(|e| AppError::io("Buat .env default", e))?;
 
     warn!(
         "File .env dibuat dengan nilai default. \
@@ -132,75 +127,3 @@ pub fn validate_env(vars: &EnvVars) -> AppResult<()> {
 
     Ok(())
 }
-=======
-﻿//! Environment Loader Module
-
-use crate::utils::error::{AppResult, AppError};
-use std::env;
-use std::path::Path;
-
-/// Load environment variables dari .env file
-pub fn load_env() -> AppResult<()> {
-    // Cari .env file
-    let env_paths = vec![
-        Path::new(".env"),
-        Path::new(".env.local"),
-        Path::new("config/.env"),
-    ];
-    
-    for env_path in env_paths {
-        if env_path.exists() {
-            load_env_file(env_path)?;
-            tracing::debug!("Loaded environment from: {:?}", env_path);
-            return Ok(());
-        }
-    }
-    
-    // Tidak ada .env file, tapi tidak error
-    tracing::warn!("No .env file found, using system environment");
-    Ok(())
-}
-
-/// Load file dan set environment variables
-fn load_env_file(path: &Path) -> AppResult<()> {
-    let content = std::fs::read_to_string(path)?;
-    
-    for line in content.lines() {
-        let line = line.trim();
-        
-        // Skip comments dan empty lines
-        if line.is_empty() || line.starts_with('#') {
-            continue;
-        }
-        
-        // Parse KEY=VALUE
-        if let Some((key, value)) = line.split_once('=') {
-            let key = key.trim();
-            let value = value.trim();
-            
-            // Remove quotes jika ada
-            let value = value.trim_matches('"').trim_matches('\'');
-            
-            // Set environment variable
-            env::set_var(key, value);
-        }
-    }
-    
-    Ok(())
-}
-
-/// Get environment variable dengan default
-pub fn get_env<T: std::str::FromStr>(key: &str, default: T) -> T {
-    env::var(key)
-        .ok()
-        .and_then(|v| v.parse().ok())
-        .unwrap_or(default)
-}
-
-/// Get required environment variable
-pub fn get_env_required(key: &str) -> AppResult<String> {
-    env::var(key).map_err(|_| {
-        AppError::ConfigError(format!("Required environment variable '{}' not set", key))
-    })
-}
->>>>>>> bce0345919f371d153ccb843f2ddbfb5e8695c5f

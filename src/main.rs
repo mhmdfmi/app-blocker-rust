@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 /// Entry point App Blocker v1.1.0
 /// Fix: Arc::try_unwrap anti-pattern, ctrlc real handler, config watcher thread,
 ///      student mode, audit logger, ConfigManager di engine.
@@ -6,11 +5,11 @@ use app_blocker_lib::{
     cli::{run_command, Cli, Commands},
     config::{env_loader, hot_reload::spawn_config_watcher, ConfigManager},
     constants::paths,
+    core::monitor::MonitorThread,
     core::{
         audit::{init_global_audit, AuditEntry, AuditEventKind},
         AppEngine, AppEvent, AppState, StateManager, WatchdogThread,
     },
-    core::monitor::MonitorThread,
     metrics::AppMetrics,
     security::{
         auth::{Argon2AuthService, AuthManager, DEFAULT_PASSWORD},
@@ -69,12 +68,13 @@ fn startup(cli: Cli) -> AppResult<()> {
 
     // ── 2. Load konfigurasi ───────────────────────────────────────────────────
     let config_path = cli.config.clone();
-    let config_mgr  = Arc::new(ConfigManager::load(&config_path)?);
-    let config      = config_mgr.get()?;
-    let config_arc  = config_mgr.get_arc();
+    let config_mgr = Arc::new(ConfigManager::load(&config_path)?);
+    let config = config_mgr.get()?;
+    let config_arc = config_mgr.get_arc();
 
     // ── 3. Inisialisasi logger ────────────────────────────────────────────────
-    let log_level = env_vars.log_level
+    let log_level = env_vars
+        .log_level
         .as_deref()
         .unwrap_or(&config.logging.level)
         .to_string();
@@ -97,12 +97,15 @@ fn startup(cli: Cli) -> AppResult<()> {
         warn!(error = %e, "Audit logger gagal diinisialisasi (non-fatal)");
     });
     app_blocker_lib::core::audit::audit(
-        AuditEntry::new(AuditEventKind::SystemStarted)
-            .with_detail(format!("v{} mode={}", env!("CARGO_PKG_VERSION"), config.app.mode))
+        AuditEntry::new(AuditEventKind::SystemStarted).with_detail(format!(
+            "v{} mode={}",
+            env!("CARGO_PKG_VERSION"),
+            config.app.mode
+        )),
     );
 
     // ── 5. Single instance check ──────────────────────────────────────────────
-    let _instance_guard = acquire_single_instance_lock()?;
+    let _instance_guard = acquire_single_instance_lock(PathBuf::from(paths::LOCK_FILE))?;
 
     // ── 6. Integrity & anti-debug ─────────────────────────────────────────────
     let _integrity = IntegrityService::new()?;
@@ -120,19 +123,17 @@ fn startup(cli: Cli) -> AppResult<()> {
         let tmp_svc = Argon2AuthService::new(String::new())?;
         let hash = tmp_svc.hash_password(DEFAULT_PASSWORD)?;
         env_loader::write_password_hash(env_path, &hash)?;
-        hash
+        hash.to_string()
     } else {
         env_vars.admin_password_hash.clone()
     };
 
     let auth_svc = Argon2AuthService::new(password_hash)?;
-    let auth_manager_shared: Arc<Mutex<AuthManager>> = Arc::new(Mutex::new(
-        AuthManager::new(
-            Box::new(auth_svc),
-            config.security.max_auth_attempts,
-            config.security.lockout_duration_seconds,
-        )
-    ));
+    let auth_manager_shared: Arc<Mutex<AuthManager>> = Arc::new(Mutex::new(AuthManager::new(
+        Box::new(auth_svc),
+        config.security.max_auth_attempts,
+        config.security.lockout_duration_seconds,
+    )));
 
     // ── 8. Inisialisasi state manager ─────────────────────────────────────────
     let state_manager = Arc::new(StateManager::new());
@@ -148,11 +149,14 @@ fn startup(cli: Cli) -> AppResult<()> {
         ctrlc::set_handler(move || {
             info!("Ctrl+C diterima, memulai shutdown graceful...");
             sf.store(true, Ordering::SeqCst);
-        }).unwrap_or_else(|e| warn!(error = %e, "Gagal pasang Ctrl+C handler"));
+        })
+        .unwrap_or_else(|e| warn!(error = %e, "Gagal pasang Ctrl+C handler"));
     }
 
     // ── 11. Startup delay ────────────────────────────────────────────────────
-    let delay = if config.simulation.enabled { 0 } else {
+    let delay = if config.simulation.enabled {
+        0
+    } else {
         config.app.startup_delay_seconds.min(5)
     };
     if delay > 0 {
@@ -170,35 +174,33 @@ fn startup(cli: Cli) -> AppResult<()> {
     let (event_tx, event_rx) = mpsc::channel::<AppEvent>();
 
     // ── 14. Mode simulasi ─────────────────────────────────────────────────────
-    let simulation_mode = config.simulation.enabled
-        || matches!(cli.command, Some(Commands::RunSimulation));
+    let simulation_mode =
+        config.simulation.enabled || matches!(cli.command, Some(Commands::RunSimulation));
     if simulation_mode {
         warn!("MODE SIMULASI aktif - proses tidak akan benar-benar dihentikan");
     }
 
     // ── 15. Spawn Monitor thread ──────────────────────────────────────────────
     {
-        let tx   = event_tx.clone();
-        let sm   = Arc::clone(&state_manager);
-        let cfg  = Arc::clone(&config_arc);
-        let sf   = Arc::clone(&shutdown_flag);
+        let tx = event_tx.clone();
+        let sm = Arc::clone(&state_manager);
+        let cfg = Arc::clone(&config_arc);
+        let sf = Arc::clone(&shutdown_flag);
         let psvc = Box::new(WindowsProcessService::new(simulation_mode));
 
         std::thread::Builder::new()
             .name("app-blocker-monitor".to_string())
-            .spawn(move || {
-                match MonitorThread::new(tx, sm, cfg, psvc) {
-                    Ok(mon) => mon.run(sf),
-                    Err(e)  => error!(error = %e, "Gagal init monitor thread"),
-                }
+            .spawn(move || match MonitorThread::new(tx, sm, cfg, psvc) {
+                Ok(mon) => mon.run(sf),
+                Err(e) => error!(error = %e, "Gagal init monitor thread"),
             })
             .map_err(|e| AppError::System(format!("Spawn monitor: {e}")))?;
     }
 
     // ── 16. Buat Engine ───────────────────────────────────────────────────────
     // FIX: auth_manager_shared di-clone ke engine dan ke overlay callback
-    let auth_for_engine   = Arc::clone(&auth_manager_shared);
-    let auth_for_overlay  = Arc::clone(&auth_manager_shared);
+    let auth_for_engine = Arc::clone(&auth_manager_shared);
+    let auth_for_overlay = Arc::clone(&auth_manager_shared);
     let tx_for_overlay_cb = event_tx.clone();
     let cfg_mgr_for_engine = Arc::clone(&config_mgr);
 
@@ -209,9 +211,10 @@ fn startup(cli: Cli) -> AppResult<()> {
     let engine_auth = {
         // Clone konfigurasi auth untuk engine (bukan move Arc)
         let tmp_svc = Argon2AuthService::new(
-            auth_manager_shared.lock()
+            auth_manager_shared
+                .lock()
                 .map(|m| m.current_hash().to_string())
-                .unwrap_or_default()
+                .unwrap_or_default(),
         )?;
         AuthManager::new(
             Box::new(tmp_svc),
@@ -236,18 +239,18 @@ fn startup(cli: Cli) -> AppResult<()> {
     engine.set_overlay_callback(Box::new(move |request| {
         let display = DisplayData {
             process_name: request.process_name.clone(),
-            pid:          request.pid,
-            username:     request.username.clone(),
+            pid: request.pid,
+            username: request.username.clone(),
             computer_name: request.computer_name.clone(),
-            timestamp:    request.timestamp.clone(),
-            attempts:     0,
+            timestamp: request.timestamp.clone(),
+            attempts: 0,
             max_attempts: 5,
         };
 
-        let trace_id = uuid::Uuid::parse_str(&request.trace_id)
-            .unwrap_or_else(|_| uuid::Uuid::new_v4());
+        let trace_id =
+            uuid::Uuid::parse_str(&request.trace_id).unwrap_or_else(|_| uuid::Uuid::new_v4());
 
-        let tx   = tx_for_overlay_cb.clone();
+        let tx = tx_for_overlay_cb.clone();
         let auth = Arc::clone(&auth_for_overlay);
 
         std::thread::Builder::new()
@@ -282,18 +285,21 @@ fn startup(cli: Cli) -> AppResult<()> {
     // ── 18. Spawn Watchdog thread ─────────────────────────────────────────────
     {
         let wd_cfg = config.watchdog.clone();
-        let sm     = Arc::clone(&state_manager);
-        let tx     = event_tx.clone();
-        let sf     = Arc::clone(&shutdown_flag);
+        let sm = Arc::clone(&state_manager);
+        let tx = event_tx.clone();
+        let sf = Arc::clone(&shutdown_flag);
 
         std::thread::Builder::new()
             .name("app-blocker-watchdog".to_string())
             .spawn(move || {
-                WatchdogThread::new(tx, sm,
+                WatchdogThread::new(
+                    tx,
+                    sm,
                     wd_cfg.heartbeat_interval_ms,
                     wd_cfg.max_missed_heartbeats,
                     wd_cfg.max_restart_attempts,
-                ).run(sf);
+                )
+                .run(sf);
             })
             .map_err(|e| AppError::System(format!("Spawn watchdog: {e}")))?;
     }
@@ -306,7 +312,10 @@ fn startup(cli: Cli) -> AppResult<()> {
     )?;
 
     info!("Semua thread berjalan. App Blocker aktif.");
-    info!("Tekan Ctrl+C atau buat file '{}' untuk berhenti.", paths::DISABLE_FLAG_FILE);
+    info!(
+        "Tekan Ctrl+C atau buat file '{}' untuk berhenti.",
+        paths::DISABLE_FLAG_FILE
+    );
 
     // ── 20. Main thread: tunggu shutdown ─────────────────────────────────────
     while !shutdown_flag.load(Ordering::SeqCst) {
@@ -333,39 +342,5 @@ fn startup(cli: Cli) -> AppResult<()> {
     }
 
     info!("App Blocker shutdown selesai.");
-=======
-#![allow(dead_code)]
-#![allow(unused_variables)]
-
-fn main() -> app_blocker::utils::error::AppResult<()> {
-    if let Err(e) = app_blocker::utils::logger::init_logger() {
-        eprintln!("Failed to initialize logger: {}", e);
-        std::process::exit(1);
-    }
-
-    tracing::info!("AppBlocker v{} starting...", app_blocker::VERSION);
-
-    if let Err(e) = validate_environment() {
-        tracing::error!("Environment validation failed: {}", e);
-        std::process::exit(1);
-    }
-
-    let state = std::sync::Arc::new(parking_lot::RwLock::new(app_blocker::core::state::AppState::default()));
-    let mut engine = app_blocker::core::engine::Engine::new(state.clone());
-    
-    if let Err(e) = engine.run() {
-        tracing::error!("Engine error: {}", e);
-        engine.shutdown();
-        std::process::exit(1);
-    }
-
-    tracing::info!("AppBlocker shut down gracefully");
-    Ok(())
-}
-
-fn validate_environment() -> app_blocker::utils::error::AppResult<()> {
-    app_blocker::config::env_loader::load_env()?;
-    app_blocker::config::validator::validate_permissions()?;
->>>>>>> bce0345919f371d153ccb843f2ddbfb5e8695c5f
     Ok(())
 }

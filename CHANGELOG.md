@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # CHANGELOG
 
 Format mengikuti [Keep a Changelog](https://keepachangelog.com/id/1.0.0/)
@@ -9,6 +8,7 @@ dan [Semantic Versioning](https://semver.org/lang/id/).
 ## [1.1.0] - 2026-04-18
 
 ### Diperbaiki (Bug Fixes)
+
 - **CRITICAL** `Arc::try_unwrap` anti-pattern di `main.rs` — AuthManager kini dibagi via
   `Arc<Mutex<AuthManager>>` yang di-clone ke engine dan overlay callback; tidak ada lagi
   potensi panic saat Arc memiliki lebih dari satu referensi
@@ -26,6 +26,7 @@ dan [Semantic Versioning](https://semver.org/lang/id/).
 - `IntegrityService::new()` menggunakan wrong import path untuk `IsDebuggerPresent`
 
 ### Ditambahkan (New Features)
+
 - **Student Mode Policy** (`src/system/student_mode.rs`) — menonaktifkan Task Manager,
   regedit, dan CMD via registry saat overlay aktif; dikembalikan otomatis setelah unlock
 - **Atomic JSON Audit Report** (`src/core/audit.rs`) — setiap event kritis ditulis ke
@@ -42,6 +43,7 @@ dan [Semantic Versioning](https://semver.org/lang/id/).
 - `ConfigManager::config_path()` — expose path config untuk file watcher
 
 ### Diperbarui
+
 - Cargo.toml: tambahkan `ctrlc`, `hostname` ke dependencies utama (bukan dev-deps)
 - Tambahkan `Win32_UI_Input_KeyboardAndMouse` dan `Win32_System_Diagnostics_Debug`
   ke fitur `windows` crate
@@ -52,6 +54,7 @@ dan [Semantic Versioning](https://semver.org/lang/id/).
 ## [1.0.0] - 2026-04-18
 
 ### Ditambahkan
+
 - Arsitektur layered + hexagonal + event-driven dengan Rust 1.70+
 - State machine 5 state: Monitoring, Blocking, Locked, Recovering, SafeMode
 - Monitor thread (TX), Engine thread (RX), Watchdog thread
@@ -67,22 +70,3 @@ dan [Semantic Versioning](https://semver.org/lang/id/).
 - Windows Service install/uninstall via PowerShell
 - GitHub Actions CI/CD pipeline
 - Unit tests: auth, state, engine (18 test total)
-=======
-# Changelog
-
-## [1.0.0] - 2026-04-16
-
-### Added
-- Initial release
-- Core state machine (Monitoring, Blocking, Locked, Recovering, SafeMode)
-- Process monitor thread
-- UI overlay with Win32 API
-- Authentication with Argon2
-- Security modules (encryption, memory, integrity)
-- Process management dengan protected process check
-- Configuration system dengan TOML
-- Structured logging dengan rotation
-- Simulation mode for testing
-- Service management scripts
-- CI/CD pipeline
->>>>>>> bce0345919f371d153ccb843f2ddbfb5e8695c5f

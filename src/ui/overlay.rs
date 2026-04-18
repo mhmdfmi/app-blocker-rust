@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 /// Overlay fullscreen Win32 menggunakan GDI.
 /// Topmost, tidak bisa ditutup, blokir Alt+F4 dan Escape.
 /// Fix: WM_TIMER ID 99 (close setelah unlock), failsafe timeout, semua imports lengkap.
@@ -14,10 +13,10 @@ use tracing::{error, info, warn};
 use uuid::Uuid;
 
 // ID Timer
-const TIMER_TOPMOST: usize       = 1;  // Re-topmost setiap 500ms
-const TIMER_CLOCK: usize         = 2;  // Update jam setiap detik
+const TIMER_TOPMOST: usize = 1; // Re-topmost setiap 500ms
+const TIMER_CLOCK: usize = 2; // Update jam setiap detik
 const TIMER_CLOSE_OVERLAY: usize = 99; // Tutup overlay 800ms setelah unlock
-const TIMER_FAILSAFE: usize      = 10; // Failsafe timeout (30 menit)
+const TIMER_FAILSAFE: usize = 10; // Failsafe timeout (30 menit)
 
 /// State yang disimpan per window instance
 struct OverlayState {
@@ -57,44 +56,37 @@ fn run_overlay_win32(
     trace_id: Uuid,
     failsafe_minutes: u64,
 ) -> AppResult<()> {
+    use crate::ui::components::ctrl_id;
     use windows::{
         core::PCWSTR,
         Win32::{
             Foundation::{COLORREF, HWND, LPARAM, LRESULT, WPARAM},
             Graphics::Gdi::{
-                BeginPaint, CreateFontW, CreateSolidBrush, DeleteObject,
-                EndPaint, FillRect, SelectObject, SetBkMode, SetTextColor,
-                TextOutW, PAINTSTRUCT, TRANSPARENT,
-                DEFAULT_CHARSET, CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY,
-                FF_SWISS, FW_BOLD, FW_NORMAL, OUT_DEFAULT_PRECIS,
+                BeginPaint, CreateFontW, CreateSolidBrush, DeleteObject, EndPaint, FillRect,
+                SelectObject, SetBkMode, SetTextColor, TextOutW, CLEARTYPE_QUALITY,
+                CLIP_DEFAULT_PRECIS, DEFAULT_CHARSET, FF_SWISS, FW_BOLD, FW_NORMAL,
+                OUT_DEFAULT_PRECIS, PAINTSTRUCT, TRANSPARENT,
             },
             System::LibraryLoader::GetModuleHandleW,
             UI::WindowsAndMessaging::{
-                BN_CLICKED, CreateWindowExW, DefWindowProcW, DestroyWindow,
-                DispatchMessageW, GetDlgItemTextW, GetMessageW, KillTimer,
-                PostQuitMessage, RegisterClassExW, SetDlgItemTextW, SetFocus,
-                SetTimer, SetWindowLongPtrW, SetWindowPos, ShowWindow,
-                TranslateMessage, UnregisterClassW,
-                CS_HREDRAW, CS_VREDRAW,
-                GWLP_USERDATA, HMENU, HWND_TOPMOST,
-                MSG, SC_CLOSE, SW_SHOW,
-                WM_CHAR, WM_CLOSE, WM_COMMAND, WM_CREATE, WM_DESTROY,
-                WM_KEYDOWN, WM_PAINT, WM_SYSCOMMAND, WM_SYSKEYDOWN, WM_TIMER,
-                WNDCLASSEXW, WS_BORDER, WS_CHILD, WS_EX_LAYERED,
-                WS_EX_TOPMOST, WS_EX_CLIENTEDGE, WS_POPUP, WS_VISIBLE,
-                ES_AUTOHSCROLL, ES_PASSWORD,
-                SWP_NOMOVE, SWP_NOSIZE, SWP_SHOWWINDOW,
-                GetWindowLongPtrW,
+                CreateWindowExW, DefWindowProcW, DestroyWindow, DispatchMessageW, GetDlgItemTextW,
+                GetMessageW, GetWindowLongPtrW, KillTimer, PostQuitMessage, RegisterClassExW,
+                SetDlgItemTextW, SetFocus, SetTimer, SetWindowLongPtrW, SetWindowPos, ShowWindow,
+                TranslateMessage, UnregisterClassW, BN_CLICKED, CS_HREDRAW, CS_VREDRAW,
+                ES_AUTOHSCROLL, ES_PASSWORD, GWLP_USERDATA, HMENU, HWND_TOPMOST, MSG, SC_CLOSE,
+                SWP_NOMOVE, SWP_NOSIZE, SWP_SHOWWINDOW, SW_SHOW, WM_CHAR, WM_CLOSE, WM_COMMAND,
+                WM_CREATE, WM_DESTROY, WM_KEYDOWN, WM_PAINT, WM_SYSCOMMAND, WM_SYSKEYDOWN,
+                WM_TIMER, WNDCLASSEXW, WS_BORDER, WS_CHILD, WS_EX_CLIENTEDGE, WS_EX_LAYERED,
+                WS_EX_TOPMOST, WS_POPUP, WS_VISIBLE,
             },
         },
     };
-    use crate::ui::components::ctrl_id;
 
     info!(%trace_id, pid = display.pid, "Memulai overlay Win32");
 
     let (screen_w, screen_h) = get_screen_dimensions();
     let class_name_w = to_wide("AppBlockerOverlayClass_v2");
-    let title_w      = to_wide("Peringatan Keamanan - App Blocker");
+    let title_w = to_wide("Peringatan Keamanan - App Blocker");
 
     let state = Box::new(OverlayState {
         auth_manager,
@@ -109,14 +101,15 @@ fn run_overlay_win32(
     let state_ptr = Box::into_raw(state) as isize;
 
     let module = unsafe {
-        GetModuleHandleW(None)
-            .map_err(|e| AppError::Win32(format!("GetModuleHandle: {e}")))?
+        GetModuleHandleW(None).map_err(|e| AppError::Win32(format!("GetModuleHandle: {e}")))?
     };
 
     // Register window class
     let bg_brush = unsafe {
         CreateSolidBrush(COLORREF(theme::to_colorref(
-            theme::BG_MAIN.0, theme::BG_MAIN.1, theme::BG_MAIN.2,
+            theme::BG_MAIN.0,
+            theme::BG_MAIN.1,
+            theme::BG_MAIN.2,
         )))
     };
 
@@ -138,10 +131,16 @@ fn run_overlay_win32(
             PCWSTR(class_name_w.as_ptr()),
             PCWSTR(title_w.as_ptr()),
             WS_POPUP | WS_VISIBLE,
-            0, 0, screen_w, screen_h,
-            None, None, module,
+            0,
+            0,
+            screen_w,
+            screen_h,
+            None,
+            None,
+            module,
             Some(state_ptr as *const _),
-        ).map_err(|e| AppError::Win32(format!("CreateWindowEx: {e}")))?
+        )
+        .map_err(|e| AppError::Win32(format!("CreateWindowEx: {e}")))?
     };
 
     unsafe {
@@ -158,13 +157,18 @@ fn run_overlay_win32(
         SetTimer(hwnd, TIMER_FAILSAFE, failsafe_ms, None);
     }
 
-    info!("Overlay ditampilkan (failsafe: {}m), menjalankan message loop", failsafe_minutes);
+    info!(
+        "Overlay ditampilkan (failsafe: {}m), menjalankan message loop",
+        failsafe_minutes
+    );
 
     // Message loop
     let mut msg = MSG::default();
     loop {
         let r = unsafe { GetMessageW(&mut msg, None, 0, 0) };
-        if r.0 <= 0 { break; }
+        if r.0 <= 0 {
+            break;
+        }
         unsafe {
             let _ = TranslateMessage(&msg);
             DispatchMessageW(&msg);
@@ -189,35 +193,30 @@ unsafe extern "system" fn overlay_wnd_proc(
     wparam: windows::Win32::Foundation::WPARAM,
     lparam: windows::Win32::Foundation::LPARAM,
 ) -> windows::Win32::Foundation::LRESULT {
-    use windows::Win32::{
-        Foundation::{COLORREF, LRESULT},
-        Graphics::Gdi::{
-            BeginPaint, CreateFontW, CreateSolidBrush, DeleteObject,
-            EndPaint, FillRect, SelectObject, SetBkMode, SetTextColor,
-            TextOutW, PAINTSTRUCT, TRANSPARENT,
-            DEFAULT_CHARSET, CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY,
-            FF_SWISS, FW_BOLD, FW_NORMAL, OUT_DEFAULT_PRECIS,
-        },
-        UI::WindowsAndMessaging::{
-            BN_CLICKED, CreateWindowExW, DefWindowProcW, GetDlgItemTextW,
-            GetWindowLongPtrW, KillTimer, PostQuitMessage, SetDlgItemTextW,
-            SetTimer, SetWindowLongPtrW, SetWindowPos,
-            CS_HREDRAW, CS_VREDRAW,
-            GWLP_USERDATA, HMENU, HWND_TOPMOST,
-            SC_CLOSE, WS_CHILD, WS_EX_CLIENTEDGE, WS_VISIBLE,
-            WM_CLOSE, WM_COMMAND, WM_CREATE, WM_DESTROY,
-            WM_KEYDOWN, WM_PAINT, WM_SYSCOMMAND, WM_SYSKEYDOWN, WM_TIMER,
-            ES_AUTOHSCROLL, ES_PASSWORD,
-            SWP_NOMOVE, SWP_NOSIZE, WS_BORDER,
-        },
-    };
     use crate::ui::components::ctrl_id;
     use crate::ui::window::to_wide;
     use windows::System::LibraryLoader::GetModuleHandleW;
+    use windows::Win32::{
+        Foundation::{COLORREF, LRESULT},
+        Graphics::Gdi::{
+            BeginPaint, CreateFontW, CreateSolidBrush, DeleteObject, EndPaint, FillRect,
+            SelectObject, SetBkMode, SetTextColor, TextOutW, CLEARTYPE_QUALITY,
+            CLIP_DEFAULT_PRECIS, DEFAULT_CHARSET, FF_SWISS, FW_BOLD, FW_NORMAL, OUT_DEFAULT_PRECIS,
+            PAINTSTRUCT, TRANSPARENT,
+        },
+        UI::WindowsAndMessaging::{
+            CreateWindowExW, DefWindowProcW, GetDlgItemTextW, GetWindowLongPtrW, KillTimer,
+            PostQuitMessage, SetDlgItemTextW, SetTimer, SetWindowLongPtrW, SetWindowPos,
+            BN_CLICKED, CS_HREDRAW, CS_VREDRAW, ES_AUTOHSCROLL, ES_PASSWORD, GWLP_USERDATA, HMENU,
+            HWND_TOPMOST, SC_CLOSE, SWP_NOMOVE, SWP_NOSIZE, WM_CLOSE, WM_COMMAND, WM_CREATE,
+            WM_DESTROY, WM_KEYDOWN, WM_PAINT, WM_SYSCOMMAND, WM_SYSKEYDOWN, WM_TIMER, WS_BORDER,
+            WS_CHILD, WS_EX_CLIENTEDGE, WS_VISIBLE,
+        },
+    };
 
     match msg_id {
         // Init: simpan pointer state
-        WM_CREATE => {
+        wm_ceate => {
             let cs = &*(lparam.0 as *const windows::Win32::UI::WindowsAndMessaging::CREATESTRUCTW);
             SetWindowLongPtrW(hwnd, GWLP_USERDATA, cs.lpCreateParams as isize);
 
@@ -225,48 +224,60 @@ unsafe extern "system" fn overlay_wnd_proc(
             let (sw, sh) = get_screen_dimensions();
             let card = CardLayout::centered(sw, sh);
 
-            let module = windows::Win32::System::LibraryLoader::GetModuleHandleW(None)
-                .unwrap_or_default();
+            let module =
+                windows::Win32::System::LibraryLoader::GetModuleHandleW(None).unwrap_or_default();
 
             // Edit control password
             let edit_class = to_wide("EDIT");
-            let empty_txt  = to_wide("");
+            let empty_txt = to_wide("");
             CreateWindowExW(
                 WS_EX_CLIENTEDGE,
                 windows::core::PCWSTR(edit_class.as_ptr()),
                 windows::core::PCWSTR(empty_txt.as_ptr()),
                 ES_PASSWORD | ES_AUTOHSCROLL | WS_CHILD | WS_VISIBLE | WS_BORDER,
-                card.x + 24, card.y + 290, card.w - 48, 40,
+                card.x + 24,
+                card.y + 290,
+                card.w - 48,
+                40,
                 hwnd,
                 HMENU(ctrl_id::ID_INPUT_PASSWORD as isize),
-                module, None,
-            ).ok();
+                module,
+                None,
+            )
+            .ok();
 
             // Tombol Buka Kunci
             let btn_class = to_wide("BUTTON");
-            let btn_txt   = to_wide("  Buka Kunci");
+            let btn_txt = to_wide("  Buka Kunci");
             CreateWindowExW(
                 windows::Win32::UI::WindowsAndMessaging::WS_EX_STYLE::default(),
                 windows::core::PCWSTR(btn_class.as_ptr()),
                 windows::core::PCWSTR(btn_txt.as_ptr()),
                 WS_CHILD | WS_VISIBLE,
-                card.x + 24, card.y + 348, card.w - 48, 44,
+                card.x + 24,
+                card.y + 348,
+                card.w - 48,
+                44,
                 hwnd,
                 HMENU(ctrl_id::ID_BTN_SUBMIT as isize),
-                module, None,
-            ).ok();
+                module,
+                None,
+            )
+            .ok();
 
             LRESULT(0)
         }
 
         // Blokir Alt+F4 dan SC_CLOSE
-        WM_SYSCOMMAND => {
-            if wparam.0 == SC_CLOSE as usize { return LRESULT(0); }
+        wm_syscommand => {
+            if wparam.0 == SC_CLOSE as usize {
+                return LRESULT(0);
+            }
             DefWindowProcW(hwnd, msg_id, wparam, lparam)
         }
 
         // Jangan tutup kecuali sudah di-unlock
-        WM_CLOSE | WM_DESTROY => {
+        wm_close | wm_destroy => {
             let state_ptr = GetWindowLongPtrW(hwnd, GWLP_USERDATA);
             if state_ptr != 0 {
                 let state = &*(state_ptr as *mut OverlayState);
@@ -279,10 +290,11 @@ unsafe extern "system" fn overlay_wnd_proc(
         }
 
         // Blokir Escape dan F4
-        WM_SYSKEYDOWN | WM_KEYDOWN => {
+        wm_syskeydown | wm_keydown => {
             match wparam.0 as u32 {
                 0x1B | 0x73 => LRESULT(0), // Escape, F4
-                0x0D => {                   // Enter = submit
+                0x0D => {
+                    // Enter = submit
                     handle_submit(hwnd);
                     LRESULT(0)
                 }
@@ -291,11 +303,10 @@ unsafe extern "system" fn overlay_wnd_proc(
         }
 
         // Timer events
-        WM_TIMER => {
+        wm_timer => {
             match wparam.0 {
                 TIMER_TOPMOST => {
-                    let _ = SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0,
-                        SWP_NOMOVE | SWP_NOSIZE);
+                    let _ = SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
                 }
                 TIMER_CLOCK => {
                     // Repaint untuk update jam
@@ -342,19 +353,17 @@ unsafe extern "system" fn overlay_wnd_proc(
         }
 
         // Klik tombol submit
-        WM_COMMAND => {
+        wm_command => {
             let ctrl = (wparam.0 & 0xFFFF) as i32;
             let notif = (wparam.0 >> 16) as u32;
-            if ctrl == crate::ui::components::ctrl_id::ID_BTN_SUBMIT
-                && notif == BN_CLICKED as u32
-            {
+            if ctrl == crate::ui::components::ctrl_id::ID_BTN_SUBMIT && notif == BN_CLICKED as u32 {
                 handle_submit(hwnd);
             }
             LRESULT(0)
         }
 
         // Paint: render seluruh overlay
-        WM_PAINT => {
+        wm_paint => {
             let state_ptr = GetWindowLongPtrW(hwnd, GWLP_USERDATA);
             if state_ptr == 0 {
                 return DefWindowProcW(hwnd, msg_id, wparam, lparam);
@@ -370,40 +379,49 @@ unsafe extern "system" fn overlay_wnd_proc(
 
 /// Render seluruh UI overlay dengan GDI
 #[cfg(target_os = "windows")]
-unsafe fn render_overlay(
-    hwnd: windows::Win32::Foundation::HWND,
-    state: &OverlayState,
-) {
+unsafe fn render_overlay(hwnd: windows::Win32::Foundation::HWND, state: &OverlayState) {
+    use crate::ui::components::theme;
     use windows::Win32::{
         Foundation::COLORREF,
         Graphics::Gdi::{
-            BeginPaint, CreateFontW, CreateSolidBrush, DeleteObject,
-            EndPaint, FillRect, SelectObject, SetBkMode, SetTextColor,
-            TextOutW, PAINTSTRUCT, TRANSPARENT,
-            DEFAULT_CHARSET, CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY,
-            FF_SWISS, FW_BOLD, FW_NORMAL, OUT_DEFAULT_PRECIS,
+            BeginPaint, CreateFontW, CreateSolidBrush, DeleteObject, EndPaint, FillRect,
+            SelectObject, SetBkMode, SetTextColor, TextOutW, CLEARTYPE_QUALITY,
+            CLIP_DEFAULT_PRECIS, DEFAULT_CHARSET, FF_SWISS, FW_BOLD, FW_NORMAL, OUT_DEFAULT_PRECIS,
+            PAINTSTRUCT, TRANSPARENT,
         },
     };
-    use crate::ui::components::theme;
 
     let (sw, sh) = get_screen_dimensions();
     let mut ps = PAINTSTRUCT::default();
     let hdc = BeginPaint(hwnd, &mut ps);
 
     // ── Background gelap
-    let bg_brush = CreateSolidBrush(COLORREF(
-        theme::to_colorref(theme::BG_MAIN.0, theme::BG_MAIN.1, theme::BG_MAIN.2)));
-    let full = windows::Win32::Foundation::RECT { left: 0, top: 0, right: sw, bottom: sh };
+    let bg_brush = CreateSolidBrush(COLORREF(theme::to_colorref(
+        theme::BG_MAIN.0,
+        theme::BG_MAIN.1,
+        theme::BG_MAIN.2,
+    )));
+    let full = windows::Win32::Foundation::RECT {
+        left: 0,
+        top: 0,
+        right: sw,
+        bottom: sh,
+    };
     FillRect(hdc, &full, bg_brush);
     let _ = DeleteObject(bg_brush);
 
     // ── Kartu tengah
     let card = CardLayout::centered(sw, sh);
-    let card_brush = CreateSolidBrush(COLORREF(
-        theme::to_colorref(theme::BG_CARD.0, theme::BG_CARD.1, theme::BG_CARD.2)));
+    let card_brush = CreateSolidBrush(COLORREF(theme::to_colorref(
+        theme::BG_CARD.0,
+        theme::BG_CARD.1,
+        theme::BG_CARD.2,
+    )));
     let card_rect = windows::Win32::Foundation::RECT {
-        left: card.x, top: card.y,
-        right: card.x + card.w, bottom: card.y + card.h,
+        left: card.x,
+        top: card.y,
+        right: card.x + card.w,
+        bottom: card.y + card.h,
     };
     FillRect(hdc, &card_rect, card_brush);
     let _ = DeleteObject(card_brush);
@@ -411,11 +429,27 @@ unsafe fn render_overlay(
     // ── Helper: draw_text closure
     let draw_text = |text: &str, x: i32, y: i32, size: i32, bold: bool, r: u8, g: u8, b: u8| {
         let face = to_wide("Segoe UI");
-        let weight = if bold { FW_BOLD.0 as i32 } else { FW_NORMAL.0 as i32 };
-        let font = CreateFontW(size, 0, 0, 0, weight, 0, 0, 0,
-            DEFAULT_CHARSET.0 as u32, OUT_DEFAULT_PRECIS.0 as u32,
-            CLIP_DEFAULT_PRECIS.0 as u32, CLEARTYPE_QUALITY.0 as u32,
-            FF_SWISS.0 as u32, windows::core::PCWSTR(face.as_ptr()));
+        let weight = if bold {
+            FW_BOLD.0 as i32
+        } else {
+            FW_NORMAL.0 as i32
+        };
+        let font = CreateFontW(
+            size,
+            0,
+            0,
+            0,
+            weight,
+            0,
+            0,
+            0,
+            DEFAULT_CHARSET.0 as u32,
+            OUT_DEFAULT_PRECIS.0 as u32,
+            CLIP_DEFAULT_PRECIS.0 as u32,
+            CLEARTYPE_QUALITY.0 as u32,
+            FF_SWISS.0 as u32,
+            windows::core::PCWSTR(face.as_ptr()),
+        );
         let old = SelectObject(hdc, font);
         SetTextColor(hdc, COLORREF(theme::to_colorref(r, g, b)));
         SetBkMode(hdc, TRANSPARENT);
@@ -426,11 +460,21 @@ unsafe fn render_overlay(
     };
 
     // ── Garis merah atas kartu
-    let red_brush = CreateSolidBrush(COLORREF(
-        theme::to_colorref(theme::RED_DANGER.0, theme::RED_DANGER.1, theme::RED_DANGER.2)));
-    FillRect(hdc, &windows::Win32::Foundation::RECT {
-        left: card.x, top: card.y, right: card.x + card.w, bottom: card.y + 6,
-    }, red_brush);
+    let red_brush = CreateSolidBrush(COLORREF(theme::to_colorref(
+        theme::RED_DANGER.0,
+        theme::RED_DANGER.1,
+        theme::RED_DANGER.2,
+    )));
+    FillRect(
+        hdc,
+        &windows::Win32::Foundation::RECT {
+            left: card.x,
+            top: card.y,
+            right: card.x + card.w,
+            bottom: card.y + 6,
+        },
+        red_brush,
+    );
     let _ = DeleteObject(red_brush);
 
     // ── Konten teks
@@ -439,36 +483,109 @@ unsafe fn render_overlay(
     let (yr, yg, yb) = theme::YELLOW_WARN;
     let (rr, rg, rb) = theme::RED_DANGER;
 
-    draw_text("  PERINGATAN KEAMANAN",
-        card.x + 24, card.y + 18, 22, true, rr, rg, rb);
+    draw_text(
+        "  PERINGATAN KEAMANAN",
+        card.x + 24,
+        card.y + 18,
+        22,
+        true,
+        rr,
+        rg,
+        rb,
+    );
 
-    draw_text("Aplikasi terlarang telah terdeteksi dan dihentikan oleh sistem.",
-        card.x + 24, card.y + 60, 13, false, tr, tg, tb);
-    draw_text("Masukkan kata sandi administrator untuk melanjutkan.",
-        card.x + 24, card.y + 82, 12, false, mr, mg, mb);
+    draw_text(
+        "Aplikasi terlarang telah terdeteksi dan dihentikan oleh sistem.",
+        card.x + 24,
+        card.y + 60,
+        13,
+        false,
+        tr,
+        tg,
+        tb,
+    );
+    draw_text(
+        "Masukkan kata sandi administrator untuk melanjutkan.",
+        card.x + 24,
+        card.y + 82,
+        12,
+        false,
+        mr,
+        mg,
+        mb,
+    );
 
     // Divider
-    let div_brush = CreateSolidBrush(COLORREF(
-        theme::to_colorref(theme::BORDER_CARD.0, theme::BORDER_CARD.1, theme::BORDER_CARD.2)));
-    FillRect(hdc, &windows::Win32::Foundation::RECT {
-        left: card.x + 24, top: card.y + 112,
-        right: card.x + card.w - 24, bottom: card.y + 114,
-    }, div_brush);
+    let div_brush = CreateSolidBrush(COLORREF(theme::to_colorref(
+        theme::BORDER_CARD.0,
+        theme::BORDER_CARD.1,
+        theme::BORDER_CARD.2,
+    )));
+    FillRect(
+        hdc,
+        &windows::Win32::Foundation::RECT {
+            left: card.x + 24,
+            top: card.y + 112,
+            right: card.x + card.w - 24,
+            bottom: card.y + 114,
+        },
+        div_brush,
+    );
     let _ = DeleteObject(div_brush);
 
     // Info proses
-    draw_text(&format!("Proses   : {}  (PID: {})", state.display.process_name, state.display.pid),
-        card.x + 24, card.y + 126, 12, false, yr, yg, yb);
-    draw_text(&format!("Pengguna : {}", state.display.username),
-        card.x + 24, card.y + 148, 12, false, mr, mg, mb);
-    draw_text(&format!("Komputer : {}", state.display.computer_name),
-        card.x + 24, card.y + 166, 12, false, mr, mg, mb);
-    draw_text(&format!("Waktu    : {}", chrono::Local::now().format("%Y-%m-%d %H:%M:%S")),
-        card.x + 24, card.y + 184, 12, false, mr, mg, mb);
+    draw_text(
+        &format!(
+            "Proses   : {}  (PID: {})",
+            state.display.process_name, state.display.pid
+        ),
+        card.x + 24,
+        card.y + 126,
+        12,
+        false,
+        yr,
+        yg,
+        yb,
+    );
+    draw_text(
+        &format!("Pengguna : {}", state.display.username),
+        card.x + 24,
+        card.y + 148,
+        12,
+        false,
+        mr,
+        mg,
+        mb,
+    );
+    draw_text(
+        &format!("Komputer : {}", state.display.computer_name),
+        card.x + 24,
+        card.y + 166,
+        12,
+        false,
+        mr,
+        mg,
+        mb,
+    );
+    draw_text(
+        &format!(
+            "Waktu    : {}",
+            chrono::Local::now().format("%Y-%m-%d %H:%M:%S")
+        ),
+        card.x + 24,
+        card.y + 184,
+        12,
+        false,
+        mr,
+        mg,
+        mb,
+    );
 
     // Percobaan
-    let att_text = format!("Percobaan: {}/{}",
-        state.display.attempts, state.display.max_attempts);
+    let att_text = format!(
+        "Percobaan: {}/{}",
+        state.display.attempts, state.display.max_attempts
+    );
     let (ar, ag, ab) = if state.display.attempts >= state.display.max_attempts / 2 {
         theme::RED_DANGER
     } else {
@@ -477,8 +594,16 @@ unsafe fn render_overlay(
     draw_text(&att_text, card.x + 24, card.y + 222, 12, false, ar, ag, ab);
 
     // Label password
-    draw_text("Kata Sandi Administrator",
-        card.x + 24, card.y + 270, 12, true, tr, tg, tb);
+    draw_text(
+        "Kata Sandi Administrator",
+        card.x + 24,
+        card.y + 270,
+        12,
+        true,
+        tr,
+        tg,
+        tb,
+    );
 
     // Status pesan
     if !state.status_msg.is_empty() {
@@ -487,19 +612,55 @@ unsafe fn render_overlay(
         } else {
             theme::GREEN_SUCCESS
         };
-        draw_text(&state.status_msg, card.x + 24, card.y + 408, 13, true, sr, sg, sb);
+        draw_text(
+            &state.status_msg,
+            card.x + 24,
+            card.y + 408,
+            13,
+            true,
+            sr,
+            sg,
+            sb,
+        );
     }
 
     // Failsafe info
-    let failsafe_txt = format!("(Auto-unlock dalam {}m jika tidak ada respons)",
-        state.failsafe_minutes);
-    draw_text(&failsafe_txt, card.x + 24, card.y + 448, 10, false, mr, mg, mb);
+    let failsafe_txt = format!(
+        "(Auto-unlock dalam {}m jika tidak ada respons)",
+        state.failsafe_minutes
+    );
+    draw_text(
+        &failsafe_txt,
+        card.x + 24,
+        card.y + 448,
+        10,
+        false,
+        mr,
+        mg,
+        mb,
+    );
 
     // Footer
-    draw_text("This program was developed by Muhamad Fahmi,",
-        card.x + 24, card.y + 470, 10, false, mr, mg, mb);
-    draw_text("Assistant Head of the Computer Lab.",
-        card.x + 24, card.y + 486, 10, false, mr, mg, mb);
+    draw_text(
+        "This program was developed by Muhamad Fahmi,",
+        card.x + 24,
+        card.y + 470,
+        10,
+        false,
+        mr,
+        mg,
+        mb,
+    );
+    draw_text(
+        "Assistant Head of the Computer Lab.",
+        card.x + 24,
+        card.y + 486,
+        10,
+        false,
+        mr,
+        mg,
+        mb,
+    );
 
     EndPaint(hwnd, &ps);
 }
@@ -507,15 +668,16 @@ unsafe fn render_overlay(
 /// Proses submit password - verifikasi dan kirim event
 #[cfg(target_os = "windows")]
 unsafe fn handle_submit(hwnd: windows::Win32::Foundation::HWND) {
-    use windows::Win32::UI::WindowsAndMessaging::{
-        GetDlgItemTextW, GetWindowLongPtrW, InvalidateRect, SetTimer,
-        GWLP_USERDATA,
-    };
     use crate::ui::components::ctrl_id;
     use crate::ui::window::to_wide;
+    use windows::Win32::UI::WindowsAndMessaging::{
+        GetDlgItemTextW, GetWindowLongPtrW, InvalidateRect, SetTimer, GWLP_USERDATA,
+    };
 
     let state_ptr = GetWindowLongPtrW(hwnd, GWLP_USERDATA);
-    if state_ptr == 0 { return; }
+    if state_ptr == 0 {
+        return;
+    }
     let state = &mut *(state_ptr as *mut OverlayState);
 
     // Baca teks dari Edit control
@@ -546,7 +708,8 @@ unsafe fn handle_submit(hwnd: windows::Win32::Foundation::HWND) {
     // Bersihkan field password
     let empty_w = to_wide("");
     let _ = windows::Win32::UI::WindowsAndMessaging::SetDlgItemTextW(
-        hwnd, ctrl_id::ID_INPUT_PASSWORD,
+        hwnd,
+        ctrl_id::ID_INPUT_PASSWORD,
         windows::core::PCWSTR(empty_w.as_ptr()),
     );
 
@@ -576,10 +739,8 @@ unsafe fn handle_submit(hwnd: windows::Win32::Foundation::HWND) {
             });
         }
         Ok(AuthStatus::LockedOut { remaining_seconds }) => {
-            state.status_msg = format!(
-                "  Terlalu banyak percobaan. Tunggu {}d.",
-                remaining_seconds
-            );
+            state.status_msg =
+                format!("  Terlalu banyak percobaan. Tunggu {}d.", remaining_seconds);
             state.status_is_error = true;
         }
         Err(e) => {
@@ -606,10 +767,13 @@ fn run_overlay_stub(
     println!("\n╔══════════════════════════════════════════════════╗");
     println!("║         PERINGATAN KEAMANAN  [SIMULASI]          ║");
     println!("╠══════════════════════════════════════════════════╣");
-    println!("║ Proses  : {} (PID: {})",  display.process_name, display.pid);
-    println!("║ User    : {}",            display.username);
-    println!("║ PC      : {}",            display.computer_name);
-    println!("║ Waktu   : {}",            display.timestamp);
+    println!(
+        "║ Proses  : {} (PID: {})",
+        display.process_name, display.pid
+    );
+    println!("║ User    : {}", display.username);
+    println!("║ PC      : {}", display.computer_name);
+    println!("║ Waktu   : {}", display.timestamp);
     println!("╠══════════════════════════════════════════════════╣");
     println!("║ [SIMULASI] Auto-unlock dalam 3 detik...          ║");
     println!("╚══════════════════════════════════════════════════╝\n");
@@ -623,104 +787,4 @@ fn run_overlay_stub(
     });
 
     Ok(())
-=======
-//! Overlay Module
-use crate::core::events::{OverlayRequest, AppEvent};
-use crate::security::auth::Authenticator;
-use crate::utils::error::AppResult;
-use parking_lot::Mutex;
-use std::sync::Arc;
-use std::thread;
-
-pub struct OverlayManager {
-    authenticator: Arc<Authenticator>,
-    is_active: Arc<Mutex<bool>>,
-    failsafe_timer: Arc<Mutex<Option<std::time::Instant>>>,
-}
-
-impl OverlayManager {
-    pub fn new(authenticator: Arc<Authenticator>) -> Self {
-        Self {
-            authenticator,
-            is_active: Arc::new(Mutex::new(false)),
-            failsafe_timer: Arc::new(Mutex::new(None)),
-        }
-    }
-    
-    pub fn show_overlay(&self, request: OverlayRequest) -> AppResult<AppEvent> {
-        tracing::info!("Showing overlay for process: {}", request.process_info.name);
-        
-        *self.is_active.lock() = true;
-        *self.failsafe_timer.lock() = Some(std::time::Instant::now());
-        
-        if request.is_simulation {
-            tracing::info!("[SIMULATED] Overlay displayed");
-            *self.is_active.lock() = false;
-            return Ok(AppEvent::UnlockSuccess {
-                username: "simulation".to_string(),
-                trace_id: request.trace_id.clone(),
-            });
-        }
-        
-        let result = self.create_overlay_window(&request);
-        
-        *self.is_active.lock() = false;
-        
-        result
-    }
-    
-    fn create_overlay_window(&self, request: &OverlayRequest) -> AppResult<AppEvent> {
-        // Simplified overlay - in production would use Win32 API
-        tracing::debug!("Creating overlay window");
-        
-        // Block until unlock (simulated)
-        thread::sleep(std::time::Duration::from_secs(2));
-        
-        tracing::info!("Overlay window created for: {}", request.process_info.name);
-        
-        Ok(AppEvent::UnlockSuccess {
-            username: "[unlock_user]".to_string(),
-            trace_id: request.trace_id.clone(),
-        })
-    }
-    
-    pub fn is_active(&self) -> bool {
-        *self.is_active.lock()
-    }
-    
-    pub fn check_failsafe(&self, timeout_minutes: u64) -> bool {
-        if let Some(start) = *self.failsafe_timer.lock() {
-            let elapsed = start.elapsed().as_secs() / 60;
-            if elapsed >= timeout_minutes {
-                tracing::warn!("Failsafe timeout reached!");
-                return true;
-            }
-        }
-        false
-    }
-    
-    pub fn reset_failsafe(&self) {
-        *self.failsafe_timer.lock() = None;
-    }
-}
-
-pub struct OverlayThread {
-    handle: Option<thread::JoinHandle<AppResult<AppEvent>>>,
-}
-
-impl OverlayThread {
-    pub fn start(request: OverlayRequest, authenticator: Arc<Authenticator>) -> Self {
-        let manager = OverlayManager::new(authenticator);
-        let handle = thread::spawn(move || manager.show_overlay(request));
-        Self { handle: Some(handle) }
-    }
-    
-    pub fn join(self) -> AppResult<AppEvent> {
-        if let Some(handle) = self.handle {
-            handle.join().map_err(|_| crate::utils::error::AppError::ThreadError("Overlay thread panicked".into()))?
-        } else {
-            Err(crate::utils::error::AppError::ThreadError("No handle".into()))
-        }
-    }
->>>>>>> bce0345919f371d153ccb843f2ddbfb5e8695c5f
 }

@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 /// Modul konfigurasi dengan hot reload dan validasi otomatis.
 pub mod env_loader;
 pub mod hot_reload;
@@ -125,12 +124,3 @@ fn compute_checksum(config: &AppConfig) -> AppResult<String> {
     let hash = Sha256::digest(json.as_bytes());
     Ok(hex::encode(hash))
 }
-=======
-﻿//! Config Module
-//! 
-//! Modul untuk konfigurasi aplikasi.
-
-pub mod settings;
-pub mod env_loader;
-pub mod validator;
->>>>>>> bce0345919f371d153ccb843f2ddbfb5e8695c5f

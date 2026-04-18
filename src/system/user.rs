@@ -1,7 +1,9 @@
-<<<<<<< HEAD
 /// Layanan informasi pengguna dan privilege Windows.
-use crate::utils::error::{AppError, AppResult};
+// use crate::utils::error::{AppError, AppResult};  // Jika Anda ingin menggunakan error handling khusus
+use std::string::String;
 use tracing::warn;
+use winapi::um::processthreadsapi::ProcessIdToSessionId;
+use windows::Win32::System::Threading::GetCurrentProcessId;
 
 /// Informasi sesi pengguna saat ini
 #[derive(Debug, Clone)]
@@ -31,20 +33,28 @@ pub fn get_username() -> String {
 
 /// Ambil nama komputer
 pub fn get_computer_name() -> String {
-    std::env::var("COMPUTERNAME")
-        .or_else(|_| {
-            hostname::get()
-                .map(|h| h.to_string_lossy().to_string())
-                .map_err(|e| std::env::VarError::NotPresent)
-        })
-        .unwrap_or_else(|_| "UNKNOWN-PC".to_string())
+    if let Ok(name) = std::env::var("COMPUTERNAME") {
+        return name;
+    } else {
+        warn!("Gagal mendapatkan nama komputer dari environment, mencoba metode alternatif");
+    }
+
+    match hostname::get() {
+        Ok(h) => h.to_string_lossy().into_owned(),
+        Err(e) => {
+            warn!(error = %e, "Gagal mendapatkan hostname, menggunakan fallback");
+            "UNKNOWN-PC".to_string()
+        }
+    }
 }
 
 /// Periksa apakah proses berjalan dengan hak admin
 #[cfg(target_os = "windows")]
 pub fn check_admin_privilege() -> bool {
     use windows::Win32::Foundation::HANDLE;
-    use windows::Win32::Security::{GetTokenInformation, TokenElevation, TOKEN_ELEVATION, TOKEN_QUERY};
+    use windows::Win32::Security::{
+        GetTokenInformation, TokenElevation, TOKEN_ELEVATION, TOKEN_QUERY,
+    };
     use windows::Win32::System::Threading::{GetCurrentProcess, OpenProcessToken};
 
     unsafe {
@@ -77,7 +87,6 @@ pub fn check_admin_privilege() -> bool {
 /// Ambil ID sesi Windows
 #[cfg(target_os = "windows")]
 pub fn get_session_id() -> u32 {
-    use windows::Win32::System::Threading::{GetCurrentProcessId, ProcessIdToSessionId};
     let pid = unsafe { GetCurrentProcessId() };
     let mut session_id = 0u32;
     unsafe {
@@ -90,45 +99,3 @@ pub fn get_session_id() -> u32 {
 pub fn get_session_id() -> u32 {
     0
 }
-=======
-//! User Module
-use crate::utils::error::{AppResult, AppError};
-use std::env;
-
-#[derive(Debug, Clone)]
-pub struct UserInfo {
-    pub username: String,
-    pub domain: Option<String>,
-    pub is_admin: bool,
-}
-
-impl UserInfo {
-    pub fn current() -> AppResult<Self> {
-        let username = env::var("USERNAME").or_else(|_| env::var("USER")).unwrap_or_else(|_| "unknown".to_string());
-        let is_admin = Self::check_admin();
-        Ok(Self {
-            username,
-            domain: env::var("USERDOMAIN").ok(),
-            is_admin,
-        })
-    }
-
-    pub fn check_admin() -> bool {
-        #[cfg(target_os = "windows")]
-        {
-            // Simplified admin check
-            let output = std::process::Command::new("net").args(["session"]).output();
-            output.map(|o| o.status.success()).unwrap_or(false)
-        }
-        #[cfg(not(target_os = "windows"))]
-        false
-    }
-
-    pub fn formatted(&self) -> String {
-        match &self.domain {
-            Some(d) => format!("{}\\{}", d, self.username),
-            None => self.username.clone(),
-        }
-    }
-}
->>>>>>> bce0345919f371d153ccb843f2ddbfb5e8695c5f

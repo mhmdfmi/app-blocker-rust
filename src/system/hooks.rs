@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 /// Windows keyboard hook untuk memblokir key kombinasi tertentu saat overlay aktif.
 /// Hanya aktif ketika overlay sedang ditampilkan.
 use crate::utils::error::{AppError, AppResult};
@@ -60,11 +59,11 @@ mod windows_impl {
     use super::*;
     use std::sync::Mutex;
     use windows::Win32::Foundation::{HINSTANCE, LPARAM, LRESULT, WPARAM};
-    use windows::Win32::UI::WindowsAndMessaging::{
-        CallNextHookEx, SetWindowsHookExW, UnhookWindowsHookEx, HHOOK, WH_KEYBOARD_LL,
-        KBDLLHOOKSTRUCT, WM_KEYDOWN, WM_SYSKEYDOWN,
-    };
     use windows::Win32::System::LibraryLoader::GetModuleHandleW;
+    use windows::Win32::UI::WindowsAndMessaging::{
+        CallNextHookEx, SetWindowsHookExW, UnhookWindowsHookEx, HHOOK, KBDLLHOOKSTRUCT,
+        WH_KEYBOARD_LL, WM_KEYDOWN, WM_SYSKEYDOWN,
+    };
 
     static HOOK_HANDLE: Mutex<Option<HHOOK>> = Mutex::new(None);
 
@@ -113,7 +112,8 @@ mod windows_impl {
                 .map_err(|e| AppError::Win32(format!("SetWindowsHookEx gagal: {e}")))?
         };
 
-        let mut guard = HOOK_HANDLE.lock()
+        let mut guard = HOOK_HANDLE
+            .lock()
             .map_err(|e| AppError::Win32(format!("Lock hook handle: {e}")))?;
         *guard = Some(hook);
         Ok(())
@@ -140,52 +140,3 @@ fn install_hook_windows() -> AppResult<()> {
 
 #[cfg(not(target_os = "windows"))]
 fn uninstall_hook_windows() {}
-=======
-﻿//! Hooks Module
-//! 
-//! Modul untuk Windows hooks (keyboard, mouse) - future extention.
-
-use crate::utils::error::{AppResult, AppError};
-
-/// Hook types
-#[derive(Debug, Clone)]
-pub enum HookType {
-    Keyboard,
-    Mouse,
-    Window,
-}
-
-/// Hook manager untuk instalasi hooks sistem
-pub struct HookManager;
-
-impl HookManager {
-    /// Install keyboard hook
-    pub fn install_keyboard_hook() -> AppResult<isize> {
-        // Placeholder untuk keyboard hook
-        // Dalam implementasi nyata, ini akan menggunakan SetWindowsHookEx
-        tracing::debug!("Keyboard hook installation requested");
-        Ok(0)
-    }
-    
-    /// Remove hook
-    pub fn remove_hook(hook_id: isize) -> AppResult<()> {
-        if hook_id != 0 {
-            tracing::debug!("Hook {} removed", hook_id);
-        }
-        Ok(())
-    }
-    
-    /// Register emergency unlock hotkey
-    pub fn register_emergency_unlock() -> AppResult<()> {
-        // Placeholder untuk hotkey registration
-        tracing::info!("Emergency unlock hotkey registered: Ctrl+Shift+U");
-        Ok(())
-    }
-}
-
-/// Blocked keys untuk overlay
-pub const BLOCKED_KEYS: &[u32] = &[
-    0x73, // F4
-    0x1B, // Escape
-];
->>>>>>> bce0345919f371d153ccb843f2ddbfb5e8695c5f

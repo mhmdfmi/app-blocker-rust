@@ -3,7 +3,8 @@
 use crate::utils::error::{AppError, AppResult};
 use chrono::{DateTime, Utc};
 use serde::Serialize;
-use std::fs::{File, OpenOptions};
+// use std::fs::File; // Tidak perlu simpan file terbuka, cukup append per event
+use std::fs::OpenOptions;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
@@ -191,7 +192,11 @@ impl AuditWriter {
             };
             let date_str = entry.timestamp.format("%Y-%m-%d").to_string();
             let file_path = self.report_dir.join(format!("audit_{date_str}.jsonl"));
-            if let Ok(mut f) = OpenOptions::new().create(true).append(true).open(&file_path) {
+            if let Ok(mut f) = OpenOptions::new()
+                .create(true)
+                .append(true)
+                .open(&file_path)
+            {
                 let _ = writeln!(f, "{line}");
             }
         }
@@ -226,7 +231,8 @@ pub static GLOBAL_AUDIT: OnceLock<AuditWriter> = OnceLock::new();
 /// Inisialisasi global audit writer
 pub fn init_global_audit(report_dir: &Path) -> AppResult<()> {
     let writer = AuditWriter::new(report_dir)?;
-    GLOBAL_AUDIT.set(writer)
+    GLOBAL_AUDIT
+        .set(writer)
         .map_err(|_| AppError::System("Audit writer sudah diinisialisasi".to_string()))?;
     Ok(())
 }

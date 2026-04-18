@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # App Blocker — Sistem Pemblokiran Aplikasi Lab Komputer
 
 [![Build](https://github.com/fahmi/app_blocker/actions/workflows/ci.yml/badge.svg)](https://github.com/fahmi/app_blocker/actions)
@@ -16,19 +15,19 @@ autentikasi Argon2id, dan audit logging terstruktur.
 
 ## Fitur Utama
 
-| Fitur | Detail |
-|---|---|
-| **Monitoring Real-time** | Scan proses setiap 1.5–2 detik via sysinfo |
-| **Overlay Win32** | Fullscreen, topmost, tidak bisa ditutup, GDI rendering |
-| **Auth Argon2id** | Hash bcrypt-grade, rate limiting, lockout 5 menit |
-| **Jadwal Blokir** | Senin–Jumat 07:00–15:00, Sabtu 07:00–12:00 (WIB) |
-| **Bypass Detection** | Rename exe, USB execution, portable app |
-| **Behavior Scoring** | CPU spike, rapid spawn, suspicious path, hidden process |
-| **Safe Kill** | Tidak pernah kill proses sistem (winlogon, csrss, explorer, dll.) |
-| **Watchdog** | Heartbeat monitoring, restart thread otomatis |
-| **Hot Reload** | Konfigurasi bisa diperbarui tanpa restart |
-| **Mode Simulasi** | Test tanpa benar-benar membunuh proses |
-| **Windows Service** | Install/uninstall via PowerShell, auto-restart |
+| Fitur                    | Detail                                                            |
+| ------------------------ | ----------------------------------------------------------------- |
+| **Monitoring Real-time** | Scan proses setiap 1.5–2 detik via sysinfo                        |
+| **Overlay Win32**        | Fullscreen, topmost, tidak bisa ditutup, GDI rendering            |
+| **Auth Argon2id**        | Hash bcrypt-grade, rate limiting, lockout 5 menit                 |
+| **Jadwal Blokir**        | Senin–Jumat 07:00–15:00, Sabtu 07:00–12:00 (WIB)                  |
+| **Bypass Detection**     | Rename exe, USB execution, portable app                           |
+| **Behavior Scoring**     | CPU spike, rapid spawn, suspicious path, hidden process           |
+| **Safe Kill**            | Tidak pernah kill proses sistem (winlogon, csrss, explorer, dll.) |
+| **Watchdog**             | Heartbeat monitoring, restart thread otomatis                     |
+| **Hot Reload**           | Konfigurasi bisa diperbarui tanpa restart                         |
+| **Mode Simulasi**        | Test tanpa benar-benar membunuh proses                            |
+| **Windows Service**      | Install/uninstall via PowerShell, auto-restart                    |
 
 ---
 
@@ -62,6 +61,7 @@ cargo build --release
 ```
 
 Script ini akan:
+
 - Menyalin binary ke `C:\AppBlocker\`
 - Mendaftarkan Windows Service dengan auto-restart
 - Generate hash password default `Admin12345!`
@@ -81,23 +81,23 @@ Script ini akan:
 app_blocker.exe [PERINTAH] [OPSI]
 ```
 
-| Perintah | Deskripsi |
-|---|---|
-| `enable` | Aktifkan pemblokiran |
-| `disable` | Nonaktifkan darurat |
-| `status` | Status sistem saat ini |
-| `logs -n 100` | Tampilkan 100 baris log terakhir |
-| `setup-password` | Setup password pertama kali |
-| `reset-password` | Reset password admin |
-| `list-blacklist` | Daftar aplikasi yang diblokir |
-| `add-blacklist --name game.exe --app-name "Nama Game"` | Tambah ke blacklist |
-| `remove-blacklist game.exe` | Hapus dari blacklist |
-| `list-whitelist` | Daftar whitelist |
-| `add-whitelist chrome.exe` | Tambah ke whitelist |
-| `simulation-mode true` | Aktifkan mode simulasi |
-| `run-simulation` | Jalankan dalam mode simulasi |
-| `run-production` | Jalankan dalam mode produksi |
-| `version` | Info versi dan build |
+| Perintah                                               | Deskripsi                        |
+| ------------------------------------------------------ | -------------------------------- |
+| `enable`                                               | Aktifkan pemblokiran             |
+| `disable`                                              | Nonaktifkan darurat              |
+| `status`                                               | Status sistem saat ini           |
+| `logs -n 100`                                          | Tampilkan 100 baris log terakhir |
+| `setup-password`                                       | Setup password pertama kali      |
+| `reset-password`                                       | Reset password admin             |
+| `list-blacklist`                                       | Daftar aplikasi yang diblokir    |
+| `add-blacklist --name game.exe --app-name "Nama Game"` | Tambah ke blacklist              |
+| `remove-blacklist game.exe`                            | Hapus dari blacklist             |
+| `list-whitelist`                                       | Daftar whitelist                 |
+| `add-whitelist chrome.exe`                             | Tambah ke whitelist              |
+| `simulation-mode true`                                 | Aktifkan mode simulasi           |
+| `run-simulation`                                       | Jalankan dalam mode simulasi     |
+| `run-production`                                       | Jalankan dalam mode produksi     |
+| `version`                                              | Info versi dan build             |
 
 ---
 
@@ -217,6 +217,7 @@ SafeMode   ──(manual recovery)────► Monitoring
 **`Admin12345!`**
 
 > ⚠️ **WAJIB ganti segera setelah instalasi!**
+>
 > ```powershell
 > app_blocker.exe reset-password
 > ```
@@ -271,25 +272,5 @@ MIT License — Lihat [LICENSE](LICENSE)
 
 ---
 
-*Dikembangkan oleh **Muhamad Fahmi**, Asisten Kepala Lab Komputer*
-*This program was developed by Muhamad Fahmi, Assistant Head of the Computer Lab.*
-=======
-# App Blocker
-
-Production-ready Windows Application Blocker dengan real-time monitoring.
-
-## Fitur
-
-- Real-time Monitoring
-- Blacklist Detection
-- Safe Process Termination
-- Fullscreen Overlay Lock
-- Admin Password Unlock
-- Secure Logging
-
-## Build
-
-```powershell
-cargo build --release
-```
->>>>>>> bce0345919f371d153ccb843f2ddbfb5e8695c5f
+_Dikembangkan oleh **Muhamad Fahmi**, Asisten Kepala Lab Komputer_
+_This program was developed by Muhamad Fahmi, Assistant Head of the Computer Lab._

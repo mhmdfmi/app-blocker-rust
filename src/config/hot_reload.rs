@@ -4,11 +4,11 @@ use crate::core::events::AppEvent;
 use crate::utils::error::{AppError, AppResult};
 use notify::{Config, Event, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
 use std::path::{Path, PathBuf};
-use std::sync::mpsc::{channel, Sender};
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::mpsc::{channel, Sender};
 use std::sync::Arc;
 use std::time::Duration;
-use tracing::{debug, error, info, warn};
+use tracing::{error, info, warn};
 
 /// Spawn thread yang watch perubahan file konfigurasi dan kirim event reload
 ///
@@ -40,16 +40,17 @@ fn run_watcher(
 ) -> AppResult<()> {
     let (tx, rx) = channel::<notify::Result<Event>>();
 
-    let mut watcher = RecommendedWatcher::new(tx, Config::default()
-        .with_poll_interval(Duration::from_millis(500)))
-        .map_err(|e| AppError::Config(format!("Gagal buat file watcher: {e}")))?;
+    let mut watcher = RecommendedWatcher::new(
+        tx,
+        Config::default().with_poll_interval(Duration::from_millis(500)),
+    )
+    .map_err(|e| AppError::Config(format!("Gagal buat file watcher: {e}")))?;
 
     // Watch direktori parent agar deteksi create/rename juga
-    let watch_dir = config_path
-        .parent()
-        .unwrap_or(Path::new("."));
+    let watch_dir = config_path.parent().unwrap_or(Path::new("."));
 
-    watcher.watch(watch_dir, RecursiveMode::NonRecursive)
+    watcher
+        .watch(watch_dir, RecursiveMode::NonRecursive)
         .map_err(|e| AppError::Config(format!("Gagal watch direktori config: {e}")))?;
 
     let mut last_reload = std::time::Instant::now();
@@ -64,10 +65,7 @@ fn run_watcher(
             Ok(Ok(event)) => {
                 // Filter hanya event yang relevan dengan file config kita
                 let is_our_file = event.paths.iter().any(|p| p == &config_path);
-                let is_write = matches!(
-                    event.kind,
-                    EventKind::Create(_) | EventKind::Modify(_)
-                );
+                let is_write = matches!(event.kind, EventKind::Create(_) | EventKind::Modify(_));
 
                 if is_our_file && is_write && last_reload.elapsed() >= debounce {
                     last_reload = std::time::Instant::now();
