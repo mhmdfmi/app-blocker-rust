@@ -30,6 +30,7 @@ pub struct DetectionEngine {
     behavior_scorer: BehaviorScorer,
     bypass_detector: BypassDetector,
     schedule_service: ScheduleService,
+    // reasons: Vec<String>,
     whitelist: Vec<String>,
     score_threshold: u32,
 }
@@ -45,7 +46,6 @@ impl DetectionEngine {
         let bypass_detector = BypassDetector::new(&config.blocking.blacklist);
         let schedule_service = ScheduleService::new(&config.schedule)?;
         let behavior_scorer = BehaviorScorer::new(config.blocking.score_threshold);
-
         let whitelist = config
             .blocking
             .whitelist
@@ -59,6 +59,7 @@ impl DetectionEngine {
             behavior_scorer,
             bypass_detector,
             schedule_service,
+            // reasons: Vec::new(),
             whitelist,
             score_threshold: config.blocking.score_threshold,
         })
@@ -120,6 +121,15 @@ impl DetectionEngine {
                 }
                 if behavior.suspicious_path {
                     reasons.push("suspicious_path".to_string());
+                }
+            }
+
+            // Gunakan behavior_scorer untuk scoring tambahan
+            let scorer_result = self.behavior_scorer.score(proc);
+            if scorer_result.total > 0 {
+                total_score += scorer_result.total;
+                for reason in &scorer_result.factors {
+                    reasons.push(format!("scorer:{}", reason));
                 }
             }
         }

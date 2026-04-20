@@ -11,18 +11,22 @@ use tracing::{debug, error, info, warn};
 #[derive(Debug)]
 struct ComponentHealth {
     last_heartbeat: Instant,
-    missed_count:   u32,
-    restart_count:  u32,
+    missed_count: u32,
+    restart_count: u32,
 }
 
 impl ComponentHealth {
     fn new() -> Self {
-        Self { last_heartbeat: Instant::now(), missed_count: 0, restart_count: 0 }
+        Self {
+            last_heartbeat: Instant::now(),
+            missed_count: 0,
+            restart_count: 0,
+        }
     }
 
     fn record_heartbeat(&mut self) {
         self.last_heartbeat = Instant::now();
-        self.missed_count   = 0;
+        self.missed_count = 0;
     }
 
     /// Kembalikan false jika missed terlalu banyak
@@ -37,11 +41,11 @@ impl ComponentHealth {
 }
 
 pub struct WatchdogThread {
-    event_tx:   Sender<AppEvent>,
-    state_mgr:  Arc<StateManager>,
-    health:     HashMap<ComponentId, ComponentHealth>,
+    event_tx: Sender<AppEvent>,
+    state_mgr: Arc<StateManager>,
+    health: HashMap<ComponentId, ComponentHealth>,
     hb_interval: Duration,
-    max_missed:  u32,
+    max_missed: u32,
     max_restart: u32,
 }
 
@@ -55,7 +59,7 @@ impl WatchdogThread {
     ) -> Self {
         let mut health = HashMap::new();
         health.insert(ComponentId::Monitor, ComponentHealth::new());
-        health.insert(ComponentId::Engine,  ComponentHealth::new());
+        health.insert(ComponentId::Engine, ComponentHealth::new());
 
         Self {
             event_tx,
@@ -85,7 +89,7 @@ impl WatchdogThread {
             }
 
             let timeout = self.hb_interval * (self.max_missed + 1);
-            let max_r   = self.max_restart;
+            let max_r = self.max_restart;
             let mut dead: Vec<ComponentId> = Vec::new();
 
             for (comp, health) in self.health.iter_mut() {
@@ -101,6 +105,11 @@ impl WatchdogThread {
             }
 
             for comp in dead {
+                // Log state sebelum restart
+                if let Ok(state) = self.state_mgr.current_state() {
+                    debug!(component = %comp, state = ?state, "State before restart");
+                }
+
                 let restarts = self.health.get(&comp).map(|h| h.restart_count).unwrap_or(0);
                 if restarts >= max_r {
                     error!(component = %comp, "Gagal restart maks kali, masuk SafeMode");
@@ -113,9 +122,9 @@ impl WatchdogThread {
                         reason: "missed_heartbeat".to_string(),
                     });
                     if let Some(h) = self.health.get_mut(&comp) {
-                        h.restart_count  += 1;
-                        h.missed_count    = 0;
-                        h.last_heartbeat  = Instant::now();
+                        h.restart_count += 1;
+                        h.missed_count = 0;
+                        h.last_heartbeat = Instant::now();
                     }
                 }
             }

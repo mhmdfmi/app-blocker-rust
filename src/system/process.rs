@@ -4,8 +4,10 @@ use crate::constants::paths::PROTECTED_PROCESSES;
 use crate::utils::error::{AppError, AppResult};
 use crate::utils::retry::{with_retry, RetryConfig};
 use std::time::Duration;
-use sysinfo::{Pid, Process, ProcessStatus, System};
-use tracing::{debug, error, info, warn};
+use sysinfo::{Pid, Process, System};
+// use sysinfo:: ProcessStatus,  // Uncomment jika ingin log status proses (Running/Sleeping/etc)
+use tracing::{debug, info};
+// use tracing::{warn, error};  // Uncomment jika ingin log peringatan atau error pada operasi proses
 
 /// Informasi proses yang terdeteksi
 #[derive(Debug, Clone)]
@@ -36,8 +38,8 @@ impl ProcessInfo {
 pub trait ProcessService: Send + Sync {
     /// Ambil daftar semua proses yang berjalan
     fn list_processes(&mut self) -> AppResult<Vec<ProcessInfo>>;
-    /// Hentikan proses berdasarkan PID
-    fn kill_process(&self, pid: u32, process_name: &str) -> AppResult<()>;
+    /// Hentikan proses berdasarkan PID, returns true jika berhasil dihentikan
+    fn kill_process(&mut self, pid: u32, process_name: &str) -> AppResult<bool>;
     /// Periksa apakah proses masih berjalan
     fn is_running(&mut self, pid: u32) -> bool;
     /// Periksa apakah nama proses dilindungi
@@ -107,7 +109,7 @@ impl ProcessService for WindowsProcessService {
         Ok(processes)
     }
 
-    fn kill_process(&self, pid: u32, process_name: &str) -> AppResult<()> {
+    fn kill_process(&mut self, pid: u32, process_name: &str) -> AppResult<bool> {
         // Validasi keamanan sebelum kill
         self.validate_safe_to_kill(pid, process_name)?;
 
@@ -117,14 +119,18 @@ impl ProcessService for WindowsProcessService {
                 name = process_name,
                 "[SIMULASI] Proses akan dihentikan (tidak benar-benar dimatikan)"
             );
-            return Ok(());
+            return Ok(true);
         }
 
         // Eksekusi kill dengan retry
         let config = RetryConfig::for_process_kill();
         with_retry(&config, &format!("kill_process:{process_name}"), || {
             kill_process_win32(pid, process_name)
-        })
+        })?;
+
+        // Tunggu proses benar-benar berhenti (timeout 5 detik)
+        let terminated = self.wait_for_termination(pid, Duration::from_secs(5));
+        Ok(terminated)
     }
 
     fn is_running(&mut self, pid: u32) -> bool {

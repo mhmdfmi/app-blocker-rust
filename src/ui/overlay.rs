@@ -4,14 +4,14 @@
 use crate::core::events::AppEvent;
 use crate::security::auth::{AuthManager, AuthStatus};
 use crate::ui::components::{theme, CardLayout, DisplayData};
+#[cfg(target_os = "windows")]
 use crate::ui::window::{get_screen_dimensions, to_wide};
 use crate::utils::error::{AppError, AppResult};
 use std::sync::mpsc::Sender;
 use std::sync::{Arc, Mutex};
-use std::time::Duration;
 use tracing::{error, info, warn};
 use uuid::Uuid;
-
+use windows::Win32::Foundation::HWND;
 // ID Timer
 const TIMER_TOPMOST: usize = 1; // Re-topmost setiap 500ms
 const TIMER_CLOCK: usize = 2; // Update jam setiap detik
@@ -31,6 +31,7 @@ struct OverlayState {
 }
 
 /// Jalankan overlay fullscreen (blocking - jalankan di thread UI)
+#[cfg(target_os = "windows")]
 pub fn run_overlay(
     display: DisplayData,
     auth_manager: Arc<Mutex<AuthManager>>,
@@ -56,33 +57,22 @@ fn run_overlay_win32(
     trace_id: Uuid,
     failsafe_minutes: u64,
 ) -> AppResult<()> {
-    use crate::ui::components::ctrl_id;
     use windows::{
         core::PCWSTR,
         Win32::{
-            Foundation::{COLORREF, HWND, LPARAM, LRESULT, WPARAM},
-            Graphics::Gdi::{
-                BeginPaint, CreateFontW, CreateSolidBrush, DeleteObject, EndPaint, FillRect,
-                SelectObject, SetBkMode, SetTextColor, TextOutW, CLEARTYPE_QUALITY,
-                CLIP_DEFAULT_PRECIS, DEFAULT_CHARSET, FF_SWISS, FW_BOLD, FW_NORMAL,
-                OUT_DEFAULT_PRECIS, PAINTSTRUCT, TRANSPARENT,
-            },
+            Foundation::COLORREF,
+            Graphics::Gdi::{CreateSolidBrush, DeleteObject},
             System::LibraryLoader::GetModuleHandleW,
             UI::WindowsAndMessaging::{
-                CreateWindowExW, DefWindowProcW, DestroyWindow, DispatchMessageW, GetDlgItemTextW,
-                GetMessageW, GetWindowLongPtrW, KillTimer, PostQuitMessage, RegisterClassExW,
-                SetDlgItemTextW, SetFocus, SetTimer, SetWindowLongPtrW, SetWindowPos, ShowWindow,
-                TranslateMessage, UnregisterClassW, BN_CLICKED, CS_HREDRAW, CS_VREDRAW,
-                ES_AUTOHSCROLL, ES_PASSWORD, GWLP_USERDATA, HMENU, HWND_TOPMOST, MSG, SC_CLOSE,
-                SWP_NOMOVE, SWP_NOSIZE, SWP_SHOWWINDOW, SW_SHOW, WM_CHAR, WM_CLOSE, WM_COMMAND,
-                WM_CREATE, WM_DESTROY, WM_KEYDOWN, WM_PAINT, WM_SYSCOMMAND, WM_SYSKEYDOWN,
-                WM_TIMER, WNDCLASSEXW, WS_BORDER, WS_CHILD, WS_EX_CLIENTEDGE, WS_EX_LAYERED,
+                CreateWindowExW, DispatchMessageW, GetMessageW, RegisterClassExW, SetTimer,
+                SetWindowPos, ShowWindow, TranslateMessage, UnregisterClassW, CS_HREDRAW,
+                CS_VREDRAW, HWND_TOPMOST, MSG, SWP_SHOWWINDOW, SW_SHOW, WNDCLASSEXW, WS_EX_LAYERED,
                 WS_EX_TOPMOST, WS_POPUP, WS_VISIBLE,
             },
         },
     };
 
-    info!(%trace_id, pid = display.pid, "Memulai overlay Win32");
+    // info!(%trace_id, pid = display.pid, "Memulai overlay Win32");
 
     let (screen_w, screen_h) = get_screen_dimensions();
     let class_name_w = to_wide("AppBlockerOverlayClass_v2");
@@ -140,7 +130,7 @@ fn run_overlay_win32(
             module,
             Some(state_ptr as *const _),
         )
-        .map_err(|e| AppError::Win32(format!("CreateWindowEx: {e}")))?
+        // .map_err(|e| AppError::Win32(format!("CreateWindowEx: {e}")))?
     };
 
     unsafe {
@@ -195,37 +185,49 @@ unsafe extern "system" fn overlay_wnd_proc(
 ) -> windows::Win32::Foundation::LRESULT {
     use crate::ui::components::ctrl_id;
     use crate::ui::window::to_wide;
-    use windows::System::LibraryLoader::GetModuleHandleW;
     use windows::Win32::{
-        Foundation::{COLORREF, LRESULT},
-        Graphics::Gdi::{
-            BeginPaint, CreateFontW, CreateSolidBrush, DeleteObject, EndPaint, FillRect,
-            SelectObject, SetBkMode, SetTextColor, TextOutW, CLEARTYPE_QUALITY,
-            CLIP_DEFAULT_PRECIS, DEFAULT_CHARSET, FF_SWISS, FW_BOLD, FW_NORMAL, OUT_DEFAULT_PRECIS,
-            PAINTSTRUCT, TRANSPARENT,
-        },
+        Foundation::LRESULT,
         UI::WindowsAndMessaging::{
-            CreateWindowExW, DefWindowProcW, GetDlgItemTextW, GetWindowLongPtrW, KillTimer,
-            PostQuitMessage, SetDlgItemTextW, SetTimer, SetWindowLongPtrW, SetWindowPos,
-            BN_CLICKED, CS_HREDRAW, CS_VREDRAW, ES_AUTOHSCROLL, ES_PASSWORD, GWLP_USERDATA, HMENU,
-            HWND_TOPMOST, SC_CLOSE, SWP_NOMOVE, SWP_NOSIZE, WM_CLOSE, WM_COMMAND, WM_CREATE,
-            WM_DESTROY, WM_KEYDOWN, WM_PAINT, WM_SYSCOMMAND, WM_SYSKEYDOWN, WM_TIMER, WS_BORDER,
-            WS_CHILD, WS_EX_CLIENTEDGE, WS_VISIBLE,
+            CreateWindowExW, DefWindowProcW, GetWindowLongPtrW, KillTimer, PostQuitMessage,
+            SetWindowLongPtrW, SetWindowPos, BN_CLICKED, ES_AUTOHSCROLL, ES_PASSWORD,
+            GWLP_USERDATA, HMENU, HWND_TOPMOST, SC_CLOSE, SWP_NOMOVE, SWP_NOSIZE, WM_CLOSE,
+            WM_COMMAND, WM_CREATE, WM_DESTROY, WM_KEYDOWN, WM_PAINT, WM_SYSCOMMAND, WM_SYSKEYDOWN,
+            WM_TIMER, WS_BORDER, WS_CHILD, WS_EX_CLIENTEDGE, WS_VISIBLE,
         },
     };
 
+    let wm_create = WM_CREATE;
+    let wm_paint = WM_PAINT;
+    let wm_timer = WM_TIMER;
+    let wm_command = WM_COMMAND;
+    let wm_close = WM_CLOSE;
+    let wm_destroy = WM_DESTROY;
+    let wm_syscommand = WM_SYSCOMMAND;
+    let wm_syskeydown = WM_SYSKEYDOWN;
+    let wm_keydown = WM_KEYDOWN;
+
     match msg_id {
         // Init: simpan pointer state
-        wm_ceate => {
+        m if m == wm_create => {
+            use windows::Win32::UI::WindowsAndMessaging::WINDOW_STYLE;
+
             let cs = &*(lparam.0 as *const windows::Win32::UI::WindowsAndMessaging::CREATESTRUCTW);
             SetWindowLongPtrW(hwnd, GWLP_USERDATA, cs.lpCreateParams as isize);
 
-            let state = &*(cs.lpCreateParams as *mut OverlayState);
+            let _state = &*(cs.lpCreateParams as *mut OverlayState);
             let (sw, sh) = get_screen_dimensions();
             let card = CardLayout::centered(sw, sh);
 
             let module =
                 windows::Win32::System::LibraryLoader::GetModuleHandleW(None).unwrap_or_default();
+
+            let style_bits: u32 = (ES_PASSWORD as u32)
+                | (ES_AUTOHSCROLL as u32)
+                | WS_CHILD.0 as u32
+                | WS_VISIBLE.0 as u32
+                | WS_BORDER.0 as u32;
+            // Jika tipe internal adalah i32/u32, .0 sudah sesuai; bungkus kembali:
+            let style = WINDOW_STYLE(style_bits as u32);
 
             // Edit control password
             let edit_class = to_wide("EDIT");
@@ -234,7 +236,7 @@ unsafe extern "system" fn overlay_wnd_proc(
                 WS_EX_CLIENTEDGE,
                 windows::core::PCWSTR(edit_class.as_ptr()),
                 windows::core::PCWSTR(empty_txt.as_ptr()),
-                ES_PASSWORD | ES_AUTOHSCROLL | WS_CHILD | WS_VISIBLE | WS_BORDER,
+                style,
                 card.x + 24,
                 card.y + 290,
                 card.w - 48,
@@ -243,14 +245,13 @@ unsafe extern "system" fn overlay_wnd_proc(
                 HMENU(ctrl_id::ID_INPUT_PASSWORD as isize),
                 module,
                 None,
-            )
-            .ok();
+            );
 
             // Tombol Buka Kunci
             let btn_class = to_wide("BUTTON");
             let btn_txt = to_wide("  Buka Kunci");
             CreateWindowExW(
-                windows::Win32::UI::WindowsAndMessaging::WS_EX_STYLE::default(),
+                windows::Win32::UI::WindowsAndMessaging::WINDOW_EX_STYLE::default(),
                 windows::core::PCWSTR(btn_class.as_ptr()),
                 windows::core::PCWSTR(btn_txt.as_ptr()),
                 WS_CHILD | WS_VISIBLE,
@@ -262,14 +263,13 @@ unsafe extern "system" fn overlay_wnd_proc(
                 HMENU(ctrl_id::ID_BTN_SUBMIT as isize),
                 module,
                 None,
-            )
-            .ok();
+            );
 
             LRESULT(0)
         }
 
         // Blokir Alt+F4 dan SC_CLOSE
-        wm_syscommand => {
+        m if m == wm_syscommand => {
             if wparam.0 == SC_CLOSE as usize {
                 return LRESULT(0);
             }
@@ -277,7 +277,7 @@ unsafe extern "system" fn overlay_wnd_proc(
         }
 
         // Jangan tutup kecuali sudah di-unlock
-        wm_close | wm_destroy => {
+        m if m == wm_close || m == wm_destroy => {
             let state_ptr = GetWindowLongPtrW(hwnd, GWLP_USERDATA);
             if state_ptr != 0 {
                 let state = &*(state_ptr as *mut OverlayState);
@@ -290,7 +290,7 @@ unsafe extern "system" fn overlay_wnd_proc(
         }
 
         // Blokir Escape dan F4
-        wm_syskeydown | wm_keydown => {
+        m if m == wm_syskeydown || m == wm_keydown => {
             match wparam.0 as u32 {
                 0x1B | 0x73 => LRESULT(0), // Escape, F4
                 0x0D => {
@@ -303,7 +303,7 @@ unsafe extern "system" fn overlay_wnd_proc(
         }
 
         // Timer events
-        wm_timer => {
+        m if m == wm_timer => {
             match wparam.0 {
                 TIMER_TOPMOST => {
                     let _ = SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
@@ -353,7 +353,7 @@ unsafe extern "system" fn overlay_wnd_proc(
         }
 
         // Klik tombol submit
-        wm_command => {
+        m if m == wm_command => {
             let ctrl = (wparam.0 & 0xFFFF) as i32;
             let notif = (wparam.0 >> 16) as u32;
             if ctrl == crate::ui::components::ctrl_id::ID_BTN_SUBMIT && notif == BN_CLICKED as u32 {
@@ -363,7 +363,7 @@ unsafe extern "system" fn overlay_wnd_proc(
         }
 
         // Paint: render seluruh overlay
-        wm_paint => {
+        m if m == wm_paint => {
             let state_ptr = GetWindowLongPtrW(hwnd, GWLP_USERDATA);
             if state_ptr == 0 {
                 return DefWindowProcW(hwnd, msg_id, wparam, lparam);
@@ -667,52 +667,85 @@ unsafe fn render_overlay(hwnd: windows::Win32::Foundation::HWND, state: &Overlay
 
 /// Proses submit password - verifikasi dan kirim event
 #[cfg(target_os = "windows")]
-unsafe fn handle_submit(hwnd: windows::Win32::Foundation::HWND) {
+unsafe fn handle_submit(hwnd: HWND) {
+    use crate::security::memory::zero_bytes;
+    use crate::security::SecureString;
     use crate::ui::components::ctrl_id;
-    use crate::ui::window::to_wide;
+    use windows::core::PCWSTR;
     use windows::Win32::UI::WindowsAndMessaging::{
-        GetDlgItemTextW, GetWindowLongPtrW, InvalidateRect, SetTimer, GWLP_USERDATA,
+        GetDlgItemTextW, GetWindowLongPtrW, SetDlgItemTextW, SetTimer, GWLP_USERDATA,
     };
 
+    // Ambil pointer state dari GWLP_USERDATA
     let state_ptr = GetWindowLongPtrW(hwnd, GWLP_USERDATA);
     if state_ptr == 0 {
         return;
     }
     let state = &mut *(state_ptr as *mut OverlayState);
 
-    // Baca teks dari Edit control
-    let mut buf = vec![0u16; 256];
+    // Baca teks dari Edit control (UTF-16)
+    let mut buf: Vec<u16> = vec![0u16; 256];
     let len = GetDlgItemTextW(hwnd, ctrl_id::ID_INPUT_PASSWORD, &mut buf) as usize;
+    // Trim ke panjang aktual
     buf.truncate(len);
-    let password = String::from_utf16_lossy(&buf);
+    // Konversi ke String (temporary)
+    let s = String::from_utf16_lossy(&buf); // fallback ke empty jika konversi gagal
 
-    if password.is_empty() {
+    // Validasi kosong lebih awal
+    if s.is_empty() {
         state.status_msg = "Masukkan kata sandi terlebih dahulu.".to_string();
         state.status_is_error = true;
         let _ = windows::Win32::Graphics::Gdi::InvalidateRect(hwnd, None, true);
+        // zeroize temporary buffers sebelum return
+        // kosongkan buf
+        buf.iter_mut().for_each(|w| *w = 0);
+        // zeroize bytes from s
+        let mut s_bytes = s.into_bytes();
+        zero_bytes(&mut s_bytes);
         return;
     }
 
-    // Verifikasi
-    let auth_result = {
-        match state.auth_manager.lock() {
-            Ok(mut mgr) => mgr.authenticate(&password),
-            Err(_) => {
-                state.status_msg = "Error sistem autentikasi.".to_string();
-                state.status_is_error = true;
-                return;
-            }
+    // Buat SecureString dari temporary String
+    // Buat SecureString dari temporary String `s`
+    let secure = match SecureString::try_from_str(&s) {
+        Ok(sec) => sec,
+        Err(e) => {
+            // Validasi gagal (mis. terlalu panjang)
+            state.status_msg = e.to_string();
+            state.status_is_error = true;
+            let _ = windows::Win32::Graphics::Gdi::InvalidateRect(hwnd, None, true);
+
+            // zeroize temporaries sebelum return
+            buf.iter_mut().for_each(|w| *w = 0);
+            let mut s_bytes = s.into_bytes();
+            zero_bytes(&mut s_bytes);
+            return;
         }
     };
 
-    // Bersihkan field password
-    let empty_w = to_wide("");
-    let _ = windows::Win32::UI::WindowsAndMessaging::SetDlgItemTextW(
-        hwnd,
-        ctrl_id::ID_INPUT_PASSWORD,
-        windows::core::PCWSTR(empty_w.as_ptr()),
-    );
+    // Zeroize temporary buffers asap
+    buf.iter_mut().for_each(|w| *w = 0);
+    let mut s_bytes = s.into_bytes();
+    zero_bytes(&mut s_bytes);
 
+    // Verifikasi menggunakan SecureString (tidak membuat salinan plaintext)
+    let auth_result: AppResult<AuthStatus> = match state.auth_manager.lock() {
+        Ok(mut mgr) => mgr.authenticate(&secure),
+        Err(_) => {
+            state.status_msg = "Error sistem autentikasi.".to_string();
+            state.status_is_error = true;
+            // optional: explicit zero of secure if you want to wipe now
+            // let mut sec = secure; sec.explicit_zero();
+            let _ = windows::Win32::Graphics::Gdi::InvalidateRect(hwnd, None, true);
+            return;
+        }
+    };
+
+    // Bersihkan field password di UI (kosongkan edit control)
+    let empty_w = to_wide("");
+    let _ = SetDlgItemTextW(hwnd, ctrl_id::ID_INPUT_PASSWORD, PCWSTR(empty_w.as_ptr()));
+
+    // Tangani hasil autentikasi
     match auth_result {
         Ok(AuthStatus::Success) => {
             state.status_msg = "  Berhasil! Membuka akses...".to_string();
@@ -722,8 +755,8 @@ unsafe fn handle_submit(hwnd: windows::Win32::Foundation::HWND) {
                 username: state.display.username.clone(),
                 unlocked_at: crate::utils::time::now_utc(),
             });
-            // ✅ FIX: Set timer 99 agar overlay ditutup setelah 800ms
-            SetTimer(hwnd, TIMER_CLOSE_OVERLAY, 800, None);
+            // Tutup overlay setelah 800ms
+            let _ = SetTimer(hwnd, TIMER_CLOSE_OVERLAY, 800, None);
         }
         Ok(AuthStatus::Failed) => {
             state.display.attempts += 1;
@@ -740,7 +773,7 @@ unsafe fn handle_submit(hwnd: windows::Win32::Foundation::HWND) {
         }
         Ok(AuthStatus::LockedOut { remaining_seconds }) => {
             state.status_msg =
-                format!("  Terlalu banyak percobaan. Tunggu {}d.", remaining_seconds);
+                format!("  Terlalu banyak percobaan. Tunggu {}s.", remaining_seconds);
             state.status_is_error = true;
         }
         Err(e) => {
@@ -750,7 +783,11 @@ unsafe fn handle_submit(hwnd: windows::Win32::Foundation::HWND) {
         }
     }
 
+    // Invalidate untuk redraw status
     let _ = windows::Win32::Graphics::Gdi::InvalidateRect(hwnd, None, true);
+
+    // SecureString akan zeroize otomatis saat drop; jika Anda ingin wipe lebih awal:
+    // secure.explicit_zero();
 }
 
 /// Stub overlay untuk non-Windows

@@ -1,3 +1,4 @@
+// src/security/auth.rs
 /// Layanan autentikasi dengan Argon2id.
 /// Password TIDAK PERNAH disimpan dalam plaintext.
 use crate::security::memory::SecureString;
@@ -78,9 +79,9 @@ impl AuthAttemptState {
 /// Trait kontrak untuk layanan autentikasi
 pub trait AuthService: Send + Sync {
     /// Verifikasi kata sandi terhadap hash tersimpan
-    fn verify_password(&self, password: &str) -> AppResult<bool>;
+    fn verify_password(&self, password: &SecureString) -> AppResult<bool>;
     /// Hash kata sandi baru dengan argon2
-    fn hash_password(&self, password: &str) -> AppResult<String>;
+    fn hash_password(&self, password: &SecureString) -> AppResult<String>;
     /// Dapatkan hash saat ini
     fn current_hash(&self) -> &str;
 }
@@ -105,13 +106,14 @@ impl Argon2AuthService {
 
     /// Buat service dengan generate hash default "Admin12345!"
     pub fn with_default_password() -> AppResult<(Self, String)> {
-        let service = Self {
+        // Buat sementara SecureString dari DEFAULT_PASSWORD untuk hashing
+        let tmp = SecureString::try_from_str(DEFAULT_PASSWORD)?;
+        let mut service = Self {
             password_hash: String::new(),
         };
-        let hash = service.hash_password(DEFAULT_PASSWORD)?;
-        let service = Self {
-            password_hash: hash.clone(),
-        };
+        let hash = service.hash_password(&tmp)?;
+        // explicit zeroing not necessary here because tmp will be dropped and zeroized
+        service.password_hash = hash.clone();
         info!("Hash password default berhasil di-generate");
         Ok((service, hash))
     }
@@ -128,7 +130,7 @@ impl Argon2AuthService {
 
 impl AuthService for Argon2AuthService {
     /// Verifikasi kata sandi menggunakan Argon2id
-    fn verify_password(&self, password: &str) -> AppResult<bool> {
+    fn verify_password(&self, password: &SecureString) -> AppResult<bool> {
         if self.password_hash.is_empty() {
             return Err(AppError::Auth(
                 "Hash password belum dikonfigurasi".to_string(),
@@ -139,13 +141,15 @@ impl AuthService for Argon2AuthService {
             .map_err(|e| AppError::Auth(format!("Parse hash gagal: {e}")))?;
 
         let argon2 = Argon2::default();
-        let result = argon2.verify_password(password.as_bytes(), &parsed_hash);
 
-        Ok(result.is_ok())
+        // Akses bytes sementara tanpa membuat salinan plaintext
+        let res = argon2.verify_password(password.as_bytes(), &parsed_hash);
+
+        Ok(res.is_ok())
     }
 
     /// Hash kata sandi baru dengan argon2id + salt random
-    fn hash_password(&self, password: &str) -> AppResult<String> {
+    fn hash_password(&self, password: &SecureString) -> AppResult<String> {
         let salt = SaltString::generate(&mut OsRng);
         let argon2 = Argon2::default();
 
@@ -184,8 +188,25 @@ impl AuthManager {
         }
     }
 
+    /// Validasi kebijakan password (panjang minimal, dll.)
+    fn validate_policy(&self, password: &SecureString) -> AppResult<()> {
+        let len = password.len();
+        if len < 8 {
+            return Err(AppError::Validation(
+                "Password minimal 8 karakter".to_string(),
+            ));
+        }
+        if len > 4096 {
+            return Err(AppError::Validation("Password terlalu panjang".to_string()));
+        }
+        Ok(())
+    }
+
     /// Coba autentikasi dengan rate limiting
-    pub fn authenticate(&mut self, password: &str) -> AppResult<AuthStatus> {
+    pub fn authenticate(&mut self, password: &SecureString) -> AppResult<AuthStatus> {
+        // Validasi kebijakan sebelum verifikasi
+        self.validate_policy(password)?;
+
         // Periksa apakah dalam lockout
         if self.state.lockout_start.is_some() {
             if let Some(remaining) = self.state.lockout_remaining_seconds(self.lockout_duration) {
@@ -203,7 +224,7 @@ impl AuthManager {
             }
         }
 
-        // Verifikasi password
+        // Verifikasi password melalui service (tidak menyimpan plaintext)
         match self.service.verify_password(password)? {
             true => {
                 info!("Autentikasi berhasil");
@@ -241,7 +262,11 @@ impl AuthManager {
     }
 
     /// Hash kata sandi baru melalui service
-    pub fn hash_new_password(&self, password: &str) -> AppResult<String> {
+    pub fn hash_new_password(&self, password: &SecureString) -> AppResult<String> {
+        // Validasi kebijakan sebelum hashing
+        if password.len() < 8 {
+            return Err(AppError::Validation("Password minimal 8 karakter".into()));
+        }
         self.service.hash_password(password)
     }
 

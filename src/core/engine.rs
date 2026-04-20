@@ -90,6 +90,14 @@ impl AppEngine {
     pub fn run(mut self, shutdown_flag: Arc<std::sync::atomic::AtomicBool>) {
         info!("Engine loop dimulai");
 
+        // Log config saat startup
+        if let Ok(cfg) = self.config.try_read() {
+            info!(
+                score_threshold = cfg.blocking.score_threshold,
+                "Config loaded"
+            );
+        }
+
         // Audit startup
         audit(
             AuditEntry::new(AuditEventKind::SystemStarted).with_detail(format!(
@@ -147,7 +155,6 @@ impl AppEngine {
 
         info!("Engine loop selesai");
     }
-
     /// Handle satu event
     fn handle_event(&mut self, event: AppEvent) -> AppResult<()> {
         debug!(event = event.name(), "Engine menerima event");
@@ -267,7 +274,6 @@ impl AppEngine {
 
         self.block_started_at = Some(std::time::Instant::now());
 
-        // Apply student mode saat akan lock
         if self.student_mode.apply_only_when_locked {
             if let Err(e) = apply_restrictions(&self.student_mode) {
                 warn!(error = %e, "Gagal terapkan student mode (non-fatal)");
@@ -275,7 +281,7 @@ impl AppEngine {
         }
 
         let kill_result = {
-            let svc = self
+            let mut svc = self
                 .process_service
                 .lock()
                 .map_err(|e| AppError::System(format!("Lock process service: {e}")))?;
@@ -283,7 +289,11 @@ impl AppEngine {
         };
 
         match kill_result {
-            Ok(()) => {
+            Ok(terminated) => {
+                if !terminated {
+                    warn!(%trace_id, pid = info.pid, name = %info.name, "Proses masih berjalan");
+                }
+
                 audit(
                     AuditEntry::new(AuditEventKind::ProcessKilled)
                         .with_trace(&trace_id)
@@ -315,6 +325,7 @@ impl AppEngine {
                         .with_process(info.pid, &info.name),
                 );
 
+                // trigger overlay via method (now defined on impl)
                 self.trigger_overlay(trace_id, &info, score, matched_game)?;
             }
             Err(e) => {
@@ -334,7 +345,6 @@ impl AppEngine {
                     reason: e.to_string(),
                 });
 
-                // Restore student mode jika kill gagal
                 let _ = restore_restrictions(&self.student_mode);
 
                 self.state_manager
@@ -375,7 +385,6 @@ impl AppEngine {
             .transition_to(AppState::Recovering, "unlock_success")?;
         self.state_manager.reset_data()?;
 
-        // Restore student mode setelah unlock
         if let Err(e) = restore_restrictions(&self.student_mode) {
             warn!(error = %e, "Gagal restore student mode (non-fatal)");
         }

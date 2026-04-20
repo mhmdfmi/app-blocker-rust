@@ -24,6 +24,7 @@ impl ProcessHistory {
 
     fn add_sample(&mut self, cpu: f32) {
         self.cpu_samples.push(cpu);
+        self.spawn_count += 1;
         // Pertahankan maksimal 10 sampel terakhir
         if self.cpu_samples.len() > 10 {
             self.cpu_samples.remove(0);

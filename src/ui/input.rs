@@ -1,6 +1,6 @@
 /// Penanganan input pengguna pada overlay: pembacaan password, keyboard hook.
 use crate::security::memory::SecureString;
-use crate::utils::error::{AppError, AppResult};
+// use crate::utils::error::{AppError, AppResult};  // Uncomment jika ingin menggunakan error handling khusus
 
 /// State input password yang aman
 #[derive(Debug, Default)]
@@ -38,8 +38,8 @@ impl PasswordInputState {
 
     /// Ambil password sebagai SecureString dan reset buffer
     pub fn take_password(&mut self) -> SecureString {
-        let pass = SecureString::new(std::mem::take(&mut self.buffer));
-        pass
+        let content = std::mem::take(&mut self.buffer);
+        SecureString::try_from_str_allow_empty(&content, true).unwrap()
     }
 
     /// Bersihkan buffer

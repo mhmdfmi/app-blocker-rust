@@ -4,13 +4,7 @@ use crate::utils::error::{AppError, AppResult};
 use std::path::Path;
 use tracing::Level;
 use tracing_appender::non_blocking::WorkerGuard;
-use tracing_subscriber::{
-    fmt::{self, time::ChronoLocal},
-    layer::SubscriberExt,
-    util::SubscriberInitExt,
-    EnvFilter,
-};
-
+use tracing_subscriber::{fmt, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
 /// Guard untuk memastikan log di-flush saat drop
 pub struct LogGuard {
     _file_guard: WorkerGuard,
@@ -54,8 +48,7 @@ pub fn init_logger(log_dir: &Path, log_level: &str) -> AppResult<LogGuard> {
     let console_layer = fmt::layer()
         .with_writer(std::io::stdout)
         .with_ansi(true)
-        .with_target(false)
-        .with_timer(ChronoLocal::new("%Y-%m-%d %H:%M:%S%.3f".to_string()));
+        .with_target(false);
 
     // Inisialisasi subscriber global
     tracing_subscriber::registry()

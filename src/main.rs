@@ -5,15 +5,16 @@ use app_blocker_lib::{
     cli::{run_command, Cli, Commands},
     config::{env_loader, hot_reload::spawn_config_watcher, ConfigManager},
     constants::paths,
-    core::monitor::MonitorThread,
     core::{
         audit::{init_global_audit, AuditEntry, AuditEventKind},
-        AppEngine, AppEvent, AppState, StateManager, WatchdogThread,
+        monitor::MonitorThread,
+        AppEngine, AppEvent, StateManager, WatchdogThread,
     },
     metrics::AppMetrics,
     security::{
         auth::{Argon2AuthService, AuthManager, DEFAULT_PASSWORD},
         integrity::IntegrityService,
+        AuthService, SecureString,
     },
     system::{
         service::{acquire_single_instance_lock, is_disable_flag_active},
@@ -116,12 +117,14 @@ fn startup(cli: Cli) -> AppResult<()> {
         }
     }
 
+    let default_password = SecureString::try_from_str(DEFAULT_PASSWORD)?;
+
     // ── 7. Setup autentikasi ──────────────────────────────────────────────────
     // FIX: AuthManager dibungkus Arc<Mutex> dari awal, tidak ada try_unwrap
     let password_hash = if env_vars.admin_password_hash.is_empty() {
         info!("Hash belum ada, generate dari default password");
         let tmp_svc = Argon2AuthService::new(String::new())?;
-        let hash = tmp_svc.hash_password(DEFAULT_PASSWORD)?;
+        let hash = tmp_svc.hash_password(&default_password)?;
         env_loader::write_password_hash(env_path, &hash)?;
         hash.to_string()
     } else {
@@ -198,8 +201,7 @@ fn startup(cli: Cli) -> AppResult<()> {
     }
 
     // ── 16. Buat Engine ───────────────────────────────────────────────────────
-    // FIX: auth_manager_shared di-clone ke engine dan ke overlay callback
-    let auth_for_engine = Arc::clone(&auth_manager_shared);
+    // auth_manager_shared di-clone untuk overlay callback
     let auth_for_overlay = Arc::clone(&auth_manager_shared);
     let tx_for_overlay_cb = event_tx.clone();
     let cfg_mgr_for_engine = Arc::clone(&config_mgr);

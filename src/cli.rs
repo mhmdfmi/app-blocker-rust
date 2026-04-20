@@ -83,9 +83,7 @@ pub enum Commands {
     },
 
     /// Hapus dari whitelist
-    RemoveWhitelist {
-        name: String,
-    },
+    RemoveWhitelist { name: String },
 
     /// Daftar whitelist
     ListWhitelist,
@@ -128,9 +126,11 @@ pub fn run_command(cli: &Cli, cmd: &Commands) {
         Commands::Logs { lines } => cmd_logs(*lines),
         Commands::SetupPassword => cmd_setup_password(&cli.config),
         Commands::ResetPassword => cmd_reset_password(&cli.config),
-        Commands::AddBlacklist { file, name, app_name } => {
-            cmd_add_blacklist(file.as_deref(), name.as_deref(), app_name.as_deref())
-        }
+        Commands::AddBlacklist {
+            file,
+            name,
+            app_name,
+        } => cmd_add_blacklist(file.as_deref(), name.as_deref(), app_name.as_deref()),
         Commands::RemoveBlacklist { name } => cmd_remove_blacklist(name),
         Commands::ListBlacklist => cmd_list_blacklist(&cli.config),
         Commands::AddWhitelist { name } => cmd_add_whitelist(name),
@@ -179,13 +179,25 @@ fn cmd_status(config_path: &Path) {
                 println!("  App Blocker v{}", env!("CARGO_PKG_VERSION"));
                 println!("═══════════════════════════════════════════");
                 println!("  Mode          : {}", cfg.app.mode);
-                println!("  Jadwal        : {}", if cfg.schedule.enabled { "Aktif" } else { "Nonaktif" });
+                println!(
+                    "  Jadwal        : {}",
+                    if cfg.schedule.enabled {
+                        "Aktif"
+                    } else {
+                        "Nonaktif"
+                    }
+                );
                 println!("  Timezone      : {}", cfg.schedule.timezone);
                 println!("  Scan interval : {}ms", cfg.monitoring.scan_interval_ms);
                 println!("  Blacklist      : {} entri", cfg.blocking.blacklist.len());
                 println!("  Simulasi      : {}", cfg.simulation.enabled);
-                println!("  Disable flag  : {}",
-                    if crate::system::service::is_disable_flag_active() { "ADA (blokir off)" } else { "Tidak ada" }
+                println!(
+                    "  Disable flag  : {}",
+                    if crate::system::service::is_disable_flag_active() {
+                        "ADA (blokir off)"
+                    } else {
+                        "Tidak ada"
+                    }
                 );
                 println!("═══════════════════════════════════════════");
             }
@@ -195,10 +207,7 @@ fn cmd_status(config_path: &Path) {
 }
 
 fn cmd_logs(lines: usize) {
-    let log_paths = [
-        r"C:\AppBlocker\logs",
-        "logs",
-    ];
+    let log_paths = [r"C:\AppBlocker\logs", "logs"];
     for dir in &log_paths {
         let path = Path::new(dir);
         if path.exists() {
@@ -227,15 +236,16 @@ fn cmd_logs(lines: usize) {
     println!("Tidak ada file log ditemukan.");
 }
 
-fn cmd_setup_password(config_path: &Path) {
-    use crate::security::auth::{Argon2AuthService, AuthService, DEFAULT_PASSWORD};
+fn cmd_setup_password(_config_path: &Path) {
     use crate::config::env_loader::write_password_hash;
+    use crate::security::auth::{Argon2AuthService, AuthService};
+    use crate::security::memory::SecureString;
 
     println!("Setup kata sandi administrator App Blocker");
     println!("─────────────────────────────────────────");
 
     let password = read_password_prompt("Kata sandi baru");
-    let confirm  = read_password_prompt("Konfirmasi kata sandi");
+    let confirm = read_password_prompt("Konfirmasi kata sandi");
 
     if password != confirm {
         eprintln!("✗ Kata sandi tidak cocok.");
@@ -249,10 +259,22 @@ fn cmd_setup_password(config_path: &Path) {
 
     let svc = match Argon2AuthService::new(String::new()) {
         Ok(s) => s,
-        Err(e) => { eprintln!("✗ Error: {e}"); return; }
+        Err(e) => {
+            eprintln!("✗ Error: {e}");
+            return;
+        }
     };
 
-    match svc.hash_password(&password) {
+    // Konversi String ke SecureString untuk keamanan
+    let secure_password = match SecureString::try_from_str(&password) {
+        Ok(s) => s,
+        Err(e) => {
+            eprintln!("✗ Error: {e}");
+            return;
+        }
+    };
+
+    match svc.hash_password(&secure_password) {
         Ok(hash) => {
             let env_path = Path::new(".env");
             match write_password_hash(env_path, &hash) {
@@ -343,18 +365,20 @@ fn cmd_download_config(output: &Path) {
     use crate::config::settings::AppConfig;
     let cfg = AppConfig::default();
     match toml::to_string_pretty(&cfg) {
-        Ok(content) => {
-            match std::fs::write(output, content) {
-                Ok(_) => println!("✓ Konfigurasi disimpan ke: {}", output.display()),
-                Err(e) => eprintln!("✗ Gagal simpan: {e}"),
-            }
-        }
+        Ok(content) => match std::fs::write(output, content) {
+            Ok(_) => println!("✓ Konfigurasi disimpan ke: {}", output.display()),
+            Err(e) => eprintln!("✗ Gagal simpan: {e}"),
+        },
         Err(e) => eprintln!("✗ Gagal serialize: {e}"),
     }
 }
 
 fn cmd_simulation_mode(enabled: bool) {
-    let status = if enabled { "diaktifkan" } else { "dinonaktifkan" };
+    let status = if enabled {
+        "diaktifkan"
+    } else {
+        "dinonaktifkan"
+    };
     println!("✓ Mode simulasi {status}.");
     println!("  Edit simulation.enabled = {enabled} di config/default.toml");
 }

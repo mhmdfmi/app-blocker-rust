@@ -1,5 +1,5 @@
 /// Komponen UI kustom - ctrl IDs, tema warna, layout.
-use serde::Serialize;
+// use serde::Serialize; // jika ingin serialisasi tema dari config
 
 /// ID kontrol Win32
 pub mod ctrl_id {
@@ -58,5 +58,12 @@ impl CardLayout {
             w,
             h,
         }
+    }
+}
+
+impl DisplayData {
+    /// Ambil PID proses yang memicu overlay
+    pub fn get_pid(&self) -> u32 {
+        self.pid
     }
 }

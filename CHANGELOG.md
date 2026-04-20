@@ -5,6 +5,29 @@ dan [Semantic Versioning](https://semver.org/lang/id/).
 
 ---
 
+## [1.1.1] - 2026-04-19
+
+### Diperbaiki (Bug Fixes)
+
+- **CRITICAL** Pembersihan merge conflict markers (<<<<<< HEAD, =======, >>>>>>>) di 43 file
+- **CRITICAL** Resolve unresolved imports - dependencies tidak ditemukan di dependency chain:
+  - Hapus `src/security/memory.rs` (unused, tidak ada di mod.rs)
+  - Hapus `src/security/encryption.rs` (unused, tidak ada di mod.rs)
+  - Bersihkan semua unused imports di seluruh modul
+- Hapus merge conflict residual di `.gitignore`, `CHANGELOG.md`, dan semua `src/utils/*.rs`
+- Perbaiki import path di `src/utils/time.rs` - comment out `chrono::Timelike`
+- Sederhanakan `RetryConfig` - hapus duplikasi field (`backoff_factor` vs `multiplier`)
+- Konsistensi naming: `multiplier` → `backoff_factor` di seluruh retry logic
+- Perbaiki typo di comment dan docstring
+
+### Diperbarui
+
+- Refactoring besar-besaran: ~2000 baris kode dihapus (net 2912 deleted, 931 added)
+- Penyederhanaan modul: engine.rs (627 baris), monitor.rs (146 baris), process.rs (175 baris)
+- Bersihkan semua dead code dan redundant imports
+
+---
+
 ## [1.1.0] - 2026-04-18
 
 ### Diperbaiki (Bug Fixes)

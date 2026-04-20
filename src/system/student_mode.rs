@@ -2,7 +2,8 @@
 /// Mencegah siswa bypass menggunakan Task Manager, regedit, atau cmd.
 /// Semua perubahan dikembalikan saat unlock berhasil.
 use crate::utils::error::{AppError, AppResult};
-use tracing::{debug, info, warn};
+use tracing::{info, warn};
+// use tracing::debug;  // Uncomment jika ingin log debug untuk operasi pembatasan (opsional)
 
 /// Konfigurasi student mode
 #[derive(Debug, Clone)]
@@ -83,19 +84,15 @@ pub fn restore_restrictions(config: &StudentModeConfig) -> AppResult<()> {
 /// Nonaktifkan / aktifkan Task Manager via registry
 #[cfg(target_os = "windows")]
 fn set_task_manager_disabled(disable: bool) -> AppResult<()> {
-    use windows::Win32::System::Registry::{
-        RegCloseKey, RegCreateKeyExW, RegDeleteValueW, RegOpenKeyExW,
-        RegSetValueExW, HKEY_CURRENT_USER, KEY_SET_VALUE, REG_DWORD,
-    };
+    // use windows::Win32::System::Registry::{
+    //     RegCloseKey, RegCreateKeyExW, RegDeleteValueW, RegOpenKeyExW, RegSetValueExW,
+    //     HKEY_CURRENT_USER, KEY_SET_VALUE, REG_DWORD,
+    // };
 
     const KEY_PATH: &str = r"Software\Microsoft\Windows\CurrentVersion\Policies\System";
     const VALUE_NAME: &str = "DisableTaskMgr";
 
-    set_dword_registry_value(
-        KEY_PATH,
-        VALUE_NAME,
-        if disable { Some(1) } else { None },
-    )?;
+    set_dword_registry_value(KEY_PATH, VALUE_NAME, if disable { Some(1) } else { None })?;
 
     if disable {
         warn!("Task Manager dinonaktifkan (student mode)");
@@ -111,11 +108,7 @@ fn set_registry_tools_disabled(disable: bool) -> AppResult<()> {
     const KEY_PATH: &str = r"Software\Microsoft\Windows\CurrentVersion\Policies\System";
     const VALUE_NAME: &str = "DisableRegistryTools";
 
-    set_dword_registry_value(
-        KEY_PATH,
-        VALUE_NAME,
-        if disable { Some(1) } else { None },
-    )?;
+    set_dword_registry_value(KEY_PATH, VALUE_NAME, if disable { Some(1) } else { None })?;
 
     if disable {
         warn!("Registry tools dinonaktifkan (student mode)");
@@ -147,17 +140,12 @@ fn set_cmd_disabled(disable: bool) -> AppResult<()> {
 
 /// Helper: set atau hapus DWORD registry value di HKCU
 #[cfg(target_os = "windows")]
-fn set_dword_registry_value(
-    key_path: &str,
-    value_name: &str,
-    value: Option<u32>,
-) -> AppResult<()> {
+fn set_dword_registry_value(key_path: &str, value_name: &str, value: Option<u32>) -> AppResult<()> {
     use crate::ui::window::to_wide;
     use windows::Win32::System::Registry::{
-        RegCloseKey, RegCreateKeyExW, RegDeleteValueW, RegOpenKeyExW,
-        RegSetValueExW, HKEY_CURRENT_USER, KEY_SET_VALUE, REG_DWORD,
-        REG_OPTION_NON_VOLATILE,
-    };
+        RegCloseKey, RegCreateKeyExW, RegDeleteValueW, RegSetValueExW, HKEY_CURRENT_USER,
+        KEY_SET_VALUE, REG_DWORD, REG_OPTION_NON_VOLATILE,
+    }; // add RegOpenKeyExW if needed for update instead of create
 
     let key_wide = to_wide(key_path);
     let val_wide = to_wide(value_name);
@@ -187,7 +175,9 @@ fn set_dword_registry_value(
     struct RegKeyGuard(windows::Win32::System::Registry::HKEY);
     impl Drop for RegKeyGuard {
         fn drop(&mut self) {
-            unsafe { let _ = RegCloseKey(self.0); }
+            unsafe {
+                let _ = RegCloseKey(self.0);
+            }
         }
     }
     let _guard = RegKeyGuard(hkey);
@@ -203,15 +193,13 @@ fn set_dword_registry_value(
                     REG_DWORD,
                     Some(&bytes),
                 )
-            }.map_err(|e| AppError::Win32(format!("RegSetValueEx gagal: {e}")))?;
+            }
+            .map_err(|e| AppError::Win32(format!("RegSetValueEx gagal: {e}")))?;
         }
         None => {
             // Hapus value untuk restore
             unsafe {
-                let _ = RegDeleteValueW(
-                    hkey,
-                    windows::core::PCWSTR(val_wide.as_ptr()),
-                );
+                let _ = RegDeleteValueW(hkey, windows::core::PCWSTR(val_wide.as_ptr()));
             }
         }
     }
@@ -220,10 +208,18 @@ fn set_dword_registry_value(
 }
 
 #[cfg(not(target_os = "windows"))]
-fn set_task_manager_disabled(_disable: bool) -> AppResult<()> { Ok(()) }
+fn set_task_manager_disabled(_disable: bool) -> AppResult<()> {
+    Ok(())
+}
 #[cfg(not(target_os = "windows"))]
-fn set_registry_tools_disabled(_disable: bool) -> AppResult<()> { Ok(()) }
+fn set_registry_tools_disabled(_disable: bool) -> AppResult<()> {
+    Ok(())
+}
 #[cfg(not(target_os = "windows"))]
-fn set_cmd_disabled(_disable: bool) -> AppResult<()> { Ok(()) }
+fn set_cmd_disabled(_disable: bool) -> AppResult<()> {
+    Ok(())
+}
 #[cfg(not(target_os = "windows"))]
-fn set_dword_registry_value(_: &str, _: &str, _: Option<u32>) -> AppResult<()> { Ok(()) }
+fn set_dword_registry_value(_: &str, _: &str, _: Option<u32>) -> AppResult<()> {
+    Ok(())
+}
