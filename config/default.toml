@@ -1,56 +1,112 @@
-﻿# Default Configuration
-[general]
-app_name = "AppBlocker"
-version = "1.0.0"
-log_level = "INFO"
+# App Blocker - Konfigurasi Default
+# Dikembangkan oleh Muhamad Fahmi, Asisten Kepala Lab Komputer
+# Versi: 1.0.0
+
+[app]
+mode = "production"
+startup_delay_seconds = 15
+max_cpu_usage_percent = 20
+max_memory_mb = 200
 
 [monitoring]
-interval_ms = 1000
-validation_delay_ms_min = 300
-validation_delay_ms_max = 1000
-rate_limit_per_minute = 3
+scan_interval_ms = 2000
+validation_delay_ms = [300, 1000]
+adaptive_interval = true
 
-[behavior_scoring]
-enabled = true
+[blocking]
+kill_rate_limit_per_minute = 3
+grace_period_seconds = [1, 2]
+behavior_scoring_enabled = true
 score_threshold = 70
+whitelist = []
 
-[behavior_scoring.weights]
-cpu_spike = 15
-rapid_spawn = 20
-suspicious_path = 25
-hidden_process = 20
-renamed_exe = 30
+[[blocking.blacklist]]
+name = "Roblox"
+process_names = ["RobloxPlayerBeta.exe"]
+paths = [
+  "C:\\Program Files (x86)\\Roblox\\",
+  "C:\\Users\\*\\AppData\\Local\\Roblox\\"
+]
+description = "Platform game Roblox"
 
-[kill_policy]
-grace_period_seconds = 2
-rate_limit_per_minute = 3
+[[blocking.blacklist]]
+name = "Valorant"
+process_names = ["VALORANT-Win64-Shipping.exe"]
+paths = ["C:\\Riot Games\\VALORANT\\"]
+description = "Game Valorant (Riot Games)"
 
-[kill_policy.checks]
-cpu_state = true
-process_stability = true
-parent_chain = true
-not_system_owned = true
+[[blocking.blacklist]]
+name = "Steam"
+process_names = ["steam.exe"]
+paths = ["C:\\Program Files (x86)\\Steam\\"]
+description = "Platform Steam"
+
+[[blocking.blacklist]]
+name = "Epic Games"
+process_names = ["EpicGamesLauncher.exe"]
+paths = ["C:\\Program Files (x86)\\Epic Games\\"]
+description = "Epic Games Launcher"
+
+[[blocking.blacklist]]
+name = "Mobile Legends PC"
+process_names = ["mlbbpc.exe", "MobileLegends.exe"]
+paths = []
+description = "Mobile Legends Bang Bang PC"
+
+[[blocking.blacklist]]
+name = "Free Fire"
+process_names = ["FFGame.exe"]
+paths = []
+description = "Garena Free Fire"
+
+[schedule]
+enabled = true
+timezone = "Asia/Jakarta"
+
+[[schedule.rules]]
+days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
+start = "07:00"
+end = "15:00"
+action = "block_games"
+
+[[schedule.rules]]
+days = ["Saturday"]
+start = "07:00"
+end = "12:00"
+action = "block_games"
 
 [overlay]
-title = "Peringatan Keamanan"
-message = "Aplikasi terlarang terdeteksi dan telah ditutup."
-failsafe_timeout_minutes = 30
 focus_interval_ms = 500
-
-[overlay.block_keys]
-keys = ["Alt+F4", "Escape"]
-
-[security]
-max_attempts = 5
+failsafe_timeout_minutes = 30
+max_unlock_attempts = 5
 lockout_duration_seconds = 300
-memory_zeroing = true
-enable_whitelist = true
+show_process_info = true
+show_timestamp = true
+show_pc_name = true
+show_attempt_counter = true
 
 [logging]
-path = "C:\\AppBlocker\\reports"
-rotation_enabled = true
-retention_days = 7
+path = "C:\\AppBlocker\\logs"
+level = "info"
+rotation_days = 7
+structured = true
 
-[resource_limits]
-max_cpu_percent = 20
-max_memory_mb = 200
+[security]
+max_auth_attempts = 5
+backoff_base_seconds = 5
+lockout_duration_seconds = 300
+memory_zero_on_drop = true
+anti_debugging = true
+check_disable_flag_interval_ms = 2000
+
+[watchdog]
+heartbeat_interval_ms = 1000
+max_missed_heartbeats = 5
+max_restart_attempts = 3
+deadlock_timeout_ms = 5000
+
+[simulation]
+enabled = false
+simulate_process_kill = false
+simulate_overlay = false
+log_only = false

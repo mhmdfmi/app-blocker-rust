@@ -1,39 +1,70 @@
-﻿//! Service Module
-//! 
-//! Modul untuk Windows service management.
+use crate::constants::paths::DISABLE_FLAG_FILE;
+// use crate::constants::paths::LOCK_FILE;  // Jika Anda ingin menggunakan file lock untuk single-instance
+/// Manajemen layanan Windows dan single-instance lock.
+use crate::utils::error::{AppError, AppResult};
+use std::io::Write;
+use std::path::{Path, PathBuf};
+use tracing::{info, warn};
 
-use crate::utils::error::{AppResult, AppError};
-use std::path::PathBuf;
+/// Periksa apakah proses dengan PID tertentu masih berjalan
+#[cfg(target_os = "windows")]
+fn is_process_running(pid: u32) -> bool {
+    use windows::Win32::Foundation::HANDLE;
+    use windows::Win32::System::Threading::{OpenProcess, PROCESS_QUERY_LIMITED_INFORMATION};
 
-/// Service configuration
-#[derive(Debug, Clone)]
-pub struct ServiceConfig {
-    pub name: String,
-    pub display_name: String,
-    pub description: String,
-    pub executable_path: PathBuf,
-    pub auto_restart: bool,
-    pub restart_delay_secs: u32,
-    pub max_restart_retries: u32,
+    unsafe {
+        let handle: HANDLE =
+            OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, pid).unwrap_or_default();
+        if handle.is_invalid() {
+            return false;
+        }
+        let _ = windows::Win32::Foundation::CloseHandle(handle);
+        true
+    }
 }
 
-impl ServiceConfig {
-    /// Default config
-    pub fn default_config(exe_path: PathBuf) -> Self {
-        Self {
-            name: "AppBlocker".to_string(),
-            display_name: "App Blocker Service".to_string(),
-            description: "Windows Application Blocker Service".to_string(),
-            executable_path: exe_path,
-            auto_restart: true,
-            restart_delay_secs: 5,
-            max_restart_retries: 3,
+#[cfg(not(target_os = "windows"))]
+fn is_process_running(pid: u32) -> bool {
+    // Di non-Windows, gunakan sinyal 0 (tidak membunuh proses, hanya cek ada)
+    std::process::Command::new("kill")
+        .args(["-0", &pid.to_string()])
+        .spawn()
+        .map(|_| true)
+        .unwrap_or(false)
+}
+/// Guard single-instance yang hapus lock file saat drop
+pub struct SingleInstanceGuard {
+    lock_path: std::path::PathBuf,
+}
+
+impl SingleInstanceGuard {
+    fn new(lock_path: std::path::PathBuf) -> Self {
+        Self { lock_path }
+    }
+}
+
+impl Drop for SingleInstanceGuard {
+    fn drop(&mut self) {
+        if self.lock_path.exists() {
+            if let Err(e) = std::fs::remove_file(&self.lock_path) {
+                warn!(error = %e, path = %self.lock_path.display(), "Gagal hapus lock file");
+            } else {
+                info!("Lock file dilepas");
+            }
         }
     }
 }
 
 /// Service manager
 pub struct ServiceManager;
+
+#[derive(Debug, Clone)]
+pub struct ServiceConfig {
+    pub name: String,
+    pub display_name: String,
+    pub description: String,
+    pub executable_path: std::path::PathBuf,
+}
 
 impl ServiceManager {
     /// Install service (requires admin)
@@ -52,86 +83,180 @@ impl ServiceManager {
             ])
             .output()
             .map_err(|e| AppError::ServiceError(format!("Failed to create service: {}", e)))?;
-        
+
         if !output.status.success() {
-            return Err(AppError::ServiceError(
-                format!("sc create failed: {}", String::from_utf8_lossy(&output.stderr))
-            ));
+            return Err(AppError::ServiceError(format!(
+                "sc create failed: {}",
+                String::from_utf8_lossy(&output.stderr)
+            )));
         }
-        
+
         // Set description
         let _ = std::process::Command::new("sc")
             .args(["description", &config.name, &config.description])
             .output();
-        
+
         tracing::info!("Service '{}' installed successfully", config.name);
         Ok(())
     }
-    
+
     /// Uninstall service
     pub fn uninstall(service_name: &str) -> AppResult<()> {
         // Stop service first
         let _ = std::process::Command::new("sc")
             .args(["stop", service_name])
             .output();
-        
+
         // Delete service
         let output = std::process::Command::new("sc")
             .args(["delete", service_name])
             .output()
             .map_err(|e| AppError::ServiceError(format!("Failed to delete service: {}", e)))?;
-        
+
         if !output.status.success() {
-            return Err(AppError::ServiceError(
-                format!("sc delete failed: {}", String::from_utf8_lossy(&output.stderr))
-            ));
+            return Err(AppError::ServiceError(format!(
+                "sc delete failed: {}",
+                String::from_utf8_lossy(&output.stderr)
+            )));
         }
-        
+
         tracing::info!("Service '{}' uninstalled successfully", service_name);
         Ok(())
     }
-    
+
     /// Start service
     pub fn start(service_name: &str) -> AppResult<()> {
         let output = std::process::Command::new("sc")
             .args(["start", service_name])
             .output()
             .map_err(|e| AppError::ServiceError(format!("Failed to start service: {}", e)))?;
-        
+
         if !output.status.success() {
-            return Err(AppError::ServiceError(
-                format!("sc start failed: {}", String::from_utf8_lossy(&output.stderr))
-            ));
+            return Err(AppError::ServiceError(format!(
+                "sc start failed: {}",
+                String::from_utf8_lossy(&output.stderr)
+            )));
         }
-        
+
         tracing::info!("Service '{}' started successfully", service_name);
         Ok(())
     }
-    
+
     /// Stop service
     pub fn stop(service_name: &str) -> AppResult<()> {
         let output = std::process::Command::new("sc")
             .args(["stop", service_name])
             .output()
             .map_err(|e| AppError::ServiceError(format!("Failed to stop service: {}", e)))?;
-        
+
         if !output.status.success() {
-            return Err(AppError::ServiceError(
-                format!("sc stop failed: {}", String::from_utf8_lossy(&output.stderr))
-            ));
+            return Err(AppError::ServiceError(format!(
+                "sc stop failed: {}",
+                String::from_utf8_lossy(&output.stderr)
+            )));
         }
-        
+
         tracing::info!("Service '{}' stopped successfully", service_name);
         Ok(())
     }
-    
+
     /// Check service status
     pub fn status(service_name: &str) -> AppResult<String> {
         let output = std::process::Command::new("sc")
             .args(["query", service_name])
             .output()
             .map_err(|e| AppError::ServiceError(format!("Failed to query service: {}", e)))?;
-        
+
         Ok(String::from_utf8_lossy(&output.stdout).to_string())
     }
+}
+
+/// Acquire single instance lock - standalone function
+pub fn acquire_single_instance_lock(lock_path: PathBuf) -> AppResult<SingleInstanceGuard> {
+    // Jika file sudah ada, periksa apakah proses masih berjalan
+    if lock_path.exists() {
+        // Coba baca PID lama
+        match std::fs::read_to_string(&lock_path) {
+            Ok(s) => {
+                let s = s.trim();
+                // Coba parse PID dan periksa apakah proses masih aktif
+                if let Ok(old_pid) = s.parse::<u32>() {
+                    if is_process_running(old_pid) {
+                        // Proses masih berjalan - kembalikan error
+                        return Err(AppError::System(format!(
+                            "Instance lock exists (pid={}). Jika yakin tidak ada proses lain, hapus {} dan coba lagi.",
+                            old_pid,
+                            lock_path.display()
+                        )));
+                    } else {
+                        // Proses sudah tidak berjalan (stale lock) - hapus dan lanjutkan
+                        tracing::warn!(
+                            old_pid = old_pid,
+                            "Stale lock file terdeteksi, menghapus..."
+                        );
+                        if let Err(e) = std::fs::remove_file(&lock_path) {
+                            tracing::warn!(error = %e, "Gagal hapus stale lock");
+                        }
+                    }
+                } else {
+                    // PID tidak valid - hapus dan lanjutkan
+                    tracing::warn!("Lock file berisi PID tidak valid, menghapus...");
+                    if let Err(e) = std::fs::remove_file(&lock_path) {
+                        tracing::warn!(error = %e, "Gagal hapus invalid lock");
+                    }
+                }
+            }
+            Err(_) => {
+                // Gagal baca file - mungkin corrupt, hapus dan lanjutkan
+                tracing::warn!("Gagal baca lock file, menghapus...");
+                if let Err(e) = std::fs::remove_file(&lock_path) {
+                    tracing::warn!(error = %e, "Gagal hapus corrupt lock");
+                }
+            }
+        }
+    }
+
+    // Tulis PID ke file lock
+    let pid = std::process::id();
+    let mut f = std::fs::File::create(&lock_path).map_err(|e| {
+        AppError::System(format!(
+            "Gagal buat lock file {}: {}",
+            lock_path.display(),
+            e
+        ))
+    })?;
+    writeln!(f, "{}", pid).map_err(|e| {
+        AppError::System(format!(
+            "Gagal tulis ke lock file {}: {}",
+            lock_path.display(),
+            e
+        ))
+    })?;
+    // flush agar data tersimpan
+    if let Err(e) = f.sync_all() {
+        // tidak fatal, tapi log/return error jika Anda ingin lebih ketat
+        tracing::warn!(error = %e, path = %lock_path.display(), "Gagal sync lock file");
+    }
+
+    Ok(SingleInstanceGuard::new(lock_path))
+}
+
+/// Periksa apakah file disable-flag ada.
+/// Fungsi ini menggunakan konstanta DISABLE_FLAG_FILE; jika tidak ada, ganti path sesuai proyek Anda.
+pub fn is_disable_flag_active() -> bool {
+    // Jika Anda ingin path yang dapat dikonfigurasi, ubah fungsi ini untuk membaca dari config.
+    let flag_path: &Path = Path::new(DISABLE_FLAG_FILE);
+    flag_path.exists()
+}
+
+pub fn create_disable_flag() -> AppResult<()> {
+    let flag_path: &Path = Path::new(DISABLE_FLAG_FILE);
+    std::fs::write(flag_path, "disabled").map_err(|e| {
+        AppError::System(format!(
+            "Gagal buat disable flag {}: {}",
+            flag_path.display(),
+            e
+        ))
+    })?;
+    Ok(())
 }

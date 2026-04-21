@@ -1,0 +1,19 @@
+# ============================================================
+# App Blocker - Template Whitelist (Format YAML)
+# Penggunaan: app_blocker.exe add-whitelist --file whitelist_template.yaml
+# ============================================================
+
+entries:
+  - name: "Nama Aplikasi"
+    process_names:
+      - "app.exe"
+    paths:
+      - "C:\\Program Files\\NamaAplikasi\\"
+    description: "Deskripsi aplikasi yang diizinkan"
+
+  - name: "Aplikasi Kedua"
+    process_names:
+      - "app2.exe"
+      - "app2_helper.exe"
+    paths: []
+    description: "Hanya berdasarkan nama proses"

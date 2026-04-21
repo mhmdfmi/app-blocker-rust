@@ -1,0 +1,21 @@
+# ============================================================
+# App Blocker - Template Blacklist (Format TOML)
+# Penggunaan: app_blocker.exe add-blacklist --file blacklist_template.toml
+# ============================================================
+
+# Entri pertama
+[[entries]]
+name          = "Nama Game"
+process_names = ["game.exe", "game_launcher.exe"]
+paths         = [
+  "C:\\Program Files\\NamaGame\\",
+  "C:\\Users\\*\\AppData\\Local\\NamaGame\\"
+]
+description   = "Deskripsi singkat game"
+
+# Entri kedua
+[[entries]]
+name          = "Game Lain"
+process_names = ["othergame.exe"]
+paths         = []
+description   = "Game tanpa path spesifik - hanya berdasarkan nama proses"

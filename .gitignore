@@ -1,26 +1,51 @@
-# Build
-target/
-debug/
-release/
+# ============================================================
+# App Blocker - .gitignore
+# ============================================================
+
+# Build artifacts
+/target/
+Cargo.lock
+
+# Kredensial dan data sensitif - JANGAN PERNAH commit!
+.env
+.env.local
+.env.production
+*.env
+
+# Log dan laporan runtime
+/logs/
+/reports/
+*.log
+
+# Lock file single instance
+app.lock
+C:/AppBlocker/app.lock
+
+# Flag disable darurat
+disable
+
+# OS files
+Thumbs.db
+.DS_Store
+desktop.ini
 
 # IDE
-.vscode/
 .idea/
+.vscode/settings.json
 *.swp
 *.swo
 
-# OS
-Thumbs.db
-*.DS_Store
+# Backup
+*.bak
+*.tmp
+*~
 
-# Logs
-*.log
-logs/
-reports/
+# Test artifacts
+/test_output/
 
-# Environment
-.env.local
-*.lock
+# Release binaries
+*.exe
+*.pdb
+*.ilk
 
-# App
-C:/AppBlocker/
+App Blocker Log Report test/

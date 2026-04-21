@@ -1,0 +1,20 @@
+{
+  "_comment": "Format: tambah SATU aplikasi ke whitelist (prioritas lebih tinggi dari blacklist)",
+  "_usage": "app_blocker.exe add-whitelist --file whitelist_single.json",
+  "_version": "1.0",
+
+  "name": "Visual Studio Code",
+  "process_names": [
+    "Code.exe"
+  ],
+  "paths": [
+    "C:\\Program Files\\Microsoft VS Code\\"
+  ],
+  "description": "Editor kode untuk praktikum pemrograman - SELALU diizinkan",
+
+  "match_rules": {
+    "match_by_name": true,
+    "match_by_path": true,
+    "case_sensitive": false
+  }
+}

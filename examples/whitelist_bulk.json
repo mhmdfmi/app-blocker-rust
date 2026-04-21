@@ -1,0 +1,197 @@
+{
+  "_comment": "Format: tambah BANYAK aplikasi ke whitelist - digunakan untuk tool pendidikan lab komputer",
+  "_usage": "app_blocker.exe add-whitelist --file whitelist_bulk.json",
+  "_version": "1.0",
+
+  "entries": [
+
+    {
+      "name": "Visual Studio Code",
+      "process_names": ["Code.exe"],
+      "paths": ["C:\\Program Files\\Microsoft VS Code\\"],
+      "description": "Editor kode utama untuk praktikum"
+    },
+
+    {
+      "name": "Microsoft Visual Studio",
+      "process_names": ["devenv.exe"],
+      "paths": [
+        "C:\\Program Files\\Microsoft Visual Studio\\",
+        "C:\\Program Files (x86)\\Microsoft Visual Studio\\"
+      ],
+      "description": "IDE Visual Studio untuk mata kuliah pemrograman"
+    },
+
+    {
+      "name": "Android Studio",
+      "process_names": ["studio64.exe", "studio.exe"],
+      "paths": [
+        "C:\\Program Files\\Android\\Android Studio\\"
+      ],
+      "description": "IDE untuk praktikum pengembangan Android"
+    },
+
+    {
+      "name": "NetBeans IDE",
+      "process_names": ["netbeans64.exe", "netbeans.exe"],
+      "paths": [
+        "C:\\Program Files\\NetBeans-*\\"
+      ],
+      "description": "IDE NetBeans untuk praktikum Java"
+    },
+
+    {
+      "name": "XAMPP",
+      "process_names": ["xampp-control.exe", "httpd.exe", "mysqld.exe"],
+      "paths": [
+        "C:\\xampp\\"
+      ],
+      "description": "Web server lokal untuk praktikum web"
+    },
+
+    {
+      "name": "WampServer",
+      "process_names": ["wampmanager.exe"],
+      "paths": [
+        "C:\\wamp64\\",
+        "C:\\wamp\\"
+      ],
+      "description": "Web server lokal alternatif"
+    },
+
+    {
+      "name": "MySQL Workbench",
+      "process_names": ["MySQLWorkbench.exe"],
+      "paths": [
+        "C:\\Program Files\\MySQL\\MySQL Workbench*\\"
+      ],
+      "description": "GUI untuk praktikum database MySQL"
+    },
+
+    {
+      "name": "DBeaver",
+      "process_names": ["dbeaver.exe"],
+      "paths": [
+        "C:\\Program Files\\DBeaver\\"
+      ],
+      "description": "Universal database client"
+    },
+
+    {
+      "name": "Packet Tracer",
+      "process_names": ["PacketTracer.exe", "PacketTracer8.exe"],
+      "paths": [
+        "C:\\Program Files\\Cisco Packet Tracer*\\"
+      ],
+      "description": "Simulator jaringan Cisco untuk praktikum networking"
+    },
+
+    {
+      "name": "Wireshark",
+      "process_names": ["Wireshark.exe"],
+      "paths": [
+        "C:\\Program Files\\Wireshark\\"
+      ],
+      "description": "Analisis paket jaringan"
+    },
+
+    {
+      "name": "Python (IDLE & Launcher)",
+      "process_names": ["python.exe", "pythonw.exe", "idle.exe"],
+      "paths": [
+        "C:\\Python*\\",
+        "C:\\Program Files\\Python*\\"
+      ],
+      "description": "Interpreter Python untuk praktikum"
+    },
+
+    {
+      "name": "Node.js",
+      "process_names": ["node.exe"],
+      "paths": [
+        "C:\\Program Files\\nodejs\\"
+      ],
+      "description": "Runtime JavaScript untuk praktikum web"
+    },
+
+    {
+      "name": "Git for Windows",
+      "process_names": ["git.exe", "git-bash.exe"],
+      "paths": [
+        "C:\\Program Files\\Git\\"
+      ],
+      "description": "Version control untuk praktikum"
+    },
+
+    {
+      "name": "Microsoft Office",
+      "process_names": [
+        "WINWORD.EXE",
+        "EXCEL.EXE",
+        "POWERPNT.EXE",
+        "ONENOTE.EXE"
+      ],
+      "paths": [
+        "C:\\Program Files\\Microsoft Office\\",
+        "C:\\Program Files (x86)\\Microsoft Office\\"
+      ],
+      "description": "Suite Office untuk tugas dan laporan"
+    },
+
+    {
+      "name": "LibreOffice",
+      "process_names": ["soffice.exe", "soffice.bin"],
+      "paths": [
+        "C:\\Program Files\\LibreOffice\\"
+      ],
+      "description": "Alternatif office open-source"
+    },
+
+    {
+      "name": "Google Chrome",
+      "process_names": ["chrome.exe"],
+      "paths": [
+        "C:\\Program Files\\Google\\Chrome\\",
+        "C:\\Program Files (x86)\\Google\\Chrome\\"
+      ],
+      "description": "Browser untuk riset dan akses LMS"
+    },
+
+    {
+      "name": "Mozilla Firefox",
+      "process_names": ["firefox.exe"],
+      "paths": [
+        "C:\\Program Files\\Mozilla Firefox\\"
+      ],
+      "description": "Browser alternatif"
+    },
+
+    {
+      "name": "Postman",
+      "process_names": ["Postman.exe"],
+      "paths": [
+        "C:\\Users\\*\\AppData\\Local\\Postman\\"
+      ],
+      "description": "API testing untuk praktikum web service"
+    },
+
+    {
+      "name": "FileZilla",
+      "process_names": ["filezilla.exe"],
+      "paths": [
+        "C:\\Program Files\\FileZilla FTP Client\\"
+      ],
+      "description": "FTP client untuk praktikum transfer file"
+    },
+
+    {
+      "name": "PuTTY",
+      "process_names": ["putty.exe"],
+      "paths": [
+        "C:\\Program Files\\PuTTY\\"
+      ],
+      "description": "SSH client untuk praktikum jaringan"
+    }
+
+  ]
+}
