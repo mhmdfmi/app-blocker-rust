@@ -66,7 +66,7 @@ fn run_overlay_win32(
             UI::WindowsAndMessaging::{
                 CreateWindowExW, DispatchMessageW, GetMessageW, RegisterClassExW, SetTimer,
                 SetWindowPos, ShowWindow, TranslateMessage, UnregisterClassW, CS_HREDRAW,
-                CS_VREDRAW, HWND_TOPMOST, MSG, SWP_SHOWWINDOW, SW_SHOW, WNDCLASSEXW, WS_EX_LAYERED,
+                CS_VREDRAW, HWND_TOPMOST, MSG, SWP_SHOWWINDOW, SW_SHOW, WNDCLASSEXW,
                 WS_EX_TOPMOST, WS_POPUP, WS_VISIBLE,
             },
         },
@@ -115,9 +115,11 @@ fn run_overlay_win32(
     unsafe { RegisterClassExW(&wc) };
 
     // Buat window fullscreen
+    // FIX: Hapus WS_EX_LAYERED karena menyebabkan overlay transparan/invisible
+    // Jika ingin transparansi, gunakan SetLayeredWindowAttributes setelah CreateWindowEx
     let hwnd = unsafe {
         CreateWindowExW(
-            WS_EX_TOPMOST | WS_EX_LAYERED,
+            WS_EX_TOPMOST,
             PCWSTR(class_name_w.as_ptr()),
             PCWSTR(title_w.as_ptr()),
             WS_POPUP | WS_VISIBLE,

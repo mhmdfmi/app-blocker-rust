@@ -5,6 +5,27 @@ dan [Semantic Versioning](https://semver.org/lang/id/).
 
 ---
 
+## [1.1.2] - 2026-04-21
+
+### Diperbaiki (Bug Fixes)
+
+- **CRITICAL** Overlay transparan/invisible saat alt+tab — menghapus flag `WS_EX_LAYERED`
+  dari `CreateWindowExW` yang menyebabkan window menjadi transparan; overlay sekarang
+  terlihat dengan jelas
+- **CRITICAL** Password hash corruption saat penyimpanan — hash argon2 sekarang disimpan
+  dalam tanda kutip ganda di file `.env` untuk mencegah karakter `$` diinterpretasikan
+  sebagai shell variable expansion; saat dibaca, tanda kutip dihapus otomatis
+- **CRITICAL** Lock file stale setelah crash — menambahkan проверка apakah proses dengan
+  PID tertayang masih berjalan; jika tidak (stale lock), file akan dihapus otomatis
+
+### Diperbarui
+
+- Menambahkan fungsi `is_process_running()` di `src/system/service.rs` untuk memeriksa
+  status proses Windows
+- Memperbarui `write_password_hash()` dan `read_env_vars()` di `src/config/env_loader.rs`
+
+---
+
 ## [1.1.1] - 2026-04-19
 
 ### Diperbaiki (Bug Fixes)

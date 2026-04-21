@@ -3,7 +3,7 @@
 use crate::core::events::AppEvent;
 use crate::utils::error::{AppError, AppResult};
 use notify::{Config, Event, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{channel, Sender};
 use std::sync::Arc;
@@ -46,8 +46,26 @@ fn run_watcher(
     )
     .map_err(|e| AppError::Config(format!("Gagal buat file watcher: {e}")))?;
 
+    // Validasi: config file harus ada
+    if !config_path.exists() {
+        return Err(AppError::Config(format!(
+            "File konfigurasi tidak ditemukan: {}",
+            config_path.display()
+        )));
+    }
+
     // Watch direktori parent agar deteksi create/rename juga
-    let watch_dir = config_path.parent().unwrap_or(Path::new("."));
+    let watch_dir = config_path
+        .parent()
+        .ok_or_else(|| AppError::Config("Path config tidak valid".to_string()))?;
+
+    // Validasi: direktori harus ada
+    if !watch_dir.exists() {
+        return Err(AppError::Config(format!(
+            "Direktori konfigurasi tidak ditemukan: {}",
+            watch_dir.display()
+        )));
+    }
 
     watcher
         .watch(watch_dir, RecursiveMode::NonRecursive)

@@ -1,6 +1,7 @@
 /// Loader untuk file .env - memuat kredensial dan pengaturan sensitif.
 /// Tidak menyimpan plaintext, hanya hash.
 use crate::utils::error::{AppError, AppResult};
+use dotenvy::from_path;
 use std::path::Path;
 use tracing::{info, warn};
 
@@ -28,15 +29,25 @@ pub fn load_env(env_path: &Path) -> AppResult<EnvVars> {
     }
 
     // Muat .env ke environment
-    dotenvy::from_path(env_path)
-        .map_err(|e| AppError::Config(format!("Gagal memuat .env: {e}")))?;
+    from_path(env_path).map_err(|e| AppError::Config(format!("Gagal memuat .env: {e}")))?;
 
     read_env_vars()
 }
 
 /// Baca variabel yang sudah dimuat ke environment
 pub fn read_env_vars() -> AppResult<EnvVars> {
-    let admin_password_hash = std::env::var("ADMIN_PASSWORD_HASH").unwrap_or_default();
+    // Priority 1: Environment variable sistem (untuk override)
+    // Priority 2: Fallback ke kosong jika tidak ada
+    let mut admin_password_hash = std::env::var("ADMIN_PASSWORD_HASH")
+        .unwrap_or_default()
+        .trim()
+        .to_string();
+
+    // FIX: Hapus tanda kutip ganda di awal dan akhir jika ada
+    // Ini menangani kasus di mana hash disimpan dengan tanda kutip di .env
+    if admin_password_hash.starts_with('"') && admin_password_hash.ends_with('"') {
+        admin_password_hash = admin_password_hash[1..admin_password_hash.len()-1].to_string();
+    }
 
     Ok(EnvVars {
         admin_password_hash,
@@ -45,19 +56,30 @@ pub fn read_env_vars() -> AppResult<EnvVars> {
     })
 }
 
+/// Sama seperti read_env_vars tapi paksa baca dari sistem env var
+/// Digunakan setelah dotenvy::from_path dipanggil
+pub fn read_env_vars_for_overwrite() -> AppResult<EnvVars> {
+    read_env_vars()
+}
+
 /// Tulis hash password baru ke file .env
 pub fn write_password_hash(env_path: &Path, hash: &str) -> AppResult<()> {
+    // FIX: Selalu bungkus hash dalam tanda kutip ganda untuk mencegah
+    // interpretasi $ sebagai variable expansion di shell
+    let quoted_hash = format!("\"{hash}\"");
+
     let content = if env_path.exists() {
         let existing =
             std::fs::read_to_string(env_path).map_err(|e| AppError::io("Baca .env", e))?;
-        update_env_value(&existing, "ADMIN_PASSWORD_HASH", hash)
+        update_env_value(&existing, "ADMIN_PASSWORD_HASH", &quoted_hash)
     } else {
         format!(
             "# App Blocker - Konfigurasi Kredensial\n\
              # JANGAN bagikan file ini!\n\
-             ADMIN_PASSWORD_HASH={hash}\n\
+             ADMIN_PASSWORD_HASH={}\n\
              APP_MODE=production\n\
-             LOG_LEVEL=info\n"
+             LOG_LEVEL=info\n",
+            quoted_hash
         )
     };
 

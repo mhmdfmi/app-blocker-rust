@@ -95,13 +95,24 @@ pub struct Argon2AuthService {
 impl Argon2AuthService {
     /// Buat service auth dengan hash yang ada
     pub fn new(password_hash: String) -> AppResult<Self> {
+        // Trim whitespace/newline dari input
+        let cleaned = password_hash.trim();
+
+        info!("Membuat Argon2AuthService dengan hash: {}", cleaned);
+        // Validasi hash kosong
+        if cleaned.is_empty() {
+            return Err(AppError::Auth("Hash password kosong".to_string()));
+        }
+
         // Validasi format hash jika tidak kosong
-        if !password_hash.is_empty() && !password_hash.starts_with("$argon2") {
+        if !cleaned.is_empty() && !cleaned.starts_with("$argon2") {
             return Err(AppError::Auth(
                 "Format hash tidak valid, harus argon2".to_string(),
             ));
         }
-        Ok(Self { password_hash })
+        Ok(Self {
+            password_hash: cleaned.to_string(),
+        })
     }
 
     /// Buat service dengan generate hash default "Admin12345!"
@@ -114,16 +125,21 @@ impl Argon2AuthService {
         let hash = service.hash_password(&tmp)?;
         // explicit zeroing not necessary here because tmp will be dropped and zeroized
         service.password_hash = hash.clone();
-        info!("Hash password default berhasil di-generate");
+        info!(
+            "Hash password default berhasil di-generate {}",
+            service.password_hash
+        );
         Ok((service, hash))
     }
 
     /// Update hash password
     pub fn update_hash(&mut self, new_hash: String) -> AppResult<()> {
-        if !new_hash.starts_with("$argon2") {
+        let cleaned = new_hash.trim();
+        if !cleaned.starts_with("$argon2") {
             return Err(AppError::Auth("Format hash baru tidak valid".to_string()));
         }
-        self.password_hash = new_hash;
+        self.password_hash = cleaned.to_string();
+        info!("Hash password berhasil diperbarui {}", self.password_hash);
         Ok(())
     }
 }

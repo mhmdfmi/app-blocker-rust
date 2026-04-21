@@ -14,7 +14,6 @@ use app_blocker_lib::{
     security::{
         auth::{Argon2AuthService, AuthManager, DEFAULT_PASSWORD},
         integrity::IntegrityService,
-        AuthService, SecureString,
     },
     system::{
         service::{acquire_single_instance_lock, is_disable_flag_active},
@@ -68,7 +67,14 @@ fn startup(cli: Cli) -> AppResult<()> {
     let env_vars = env_loader::load_env(env_path)?;
 
     // ── 2. Load konfigurasi ───────────────────────────────────────────────────
-    let config_path = cli.config.clone();
+    // Resolve ke absolute path agar working directory tidak masalah
+    let config_path = if cli.config.is_absolute() {
+        cli.config.clone()
+    } else {
+        std::env::current_dir()
+            .map(|p| p.join(&cli.config))
+            .unwrap_or_else(|_| cli.config.clone())
+    };
     let config_mgr = Arc::new(ConfigManager::load(&config_path)?);
     let config = config_mgr.get()?;
     let config_arc = config_mgr.get_arc();
@@ -117,19 +123,28 @@ fn startup(cli: Cli) -> AppResult<()> {
         }
     }
 
-    let default_password = SecureString::try_from_str(DEFAULT_PASSWORD)?;
+    // let _default_password = SecureString::try_from_str(DEFAULT_PASSWORD)?;
 
     // ── 7. Setup autentikasi ──────────────────────────────────────────────────
     // FIX: AuthManager dibungkus Arc<Mutex> dari awal, tidak ada try_unwrap
-    let password_hash = if env_vars.admin_password_hash.is_empty() {
-        info!("Hash belum ada, generate dari default password");
-        let tmp_svc = Argon2AuthService::new(String::new())?;
-        let hash = tmp_svc.hash_password(&default_password)?;
+    let password_hash = if env_vars.admin_password_hash.trim().is_empty() {
+        info!(
+            "Hash belum ada, generate dari default password {}...",
+            DEFAULT_PASSWORD
+        );
+        // Gunakan with_default_password() untuk generate hash baru
+        let (_tmp_svc, hash) = Argon2AuthService::with_default_password()?;
+        info!(
+            "Hash password default berhasil di-generate: {}...",
+            &hash[..30.min(hash.len())]
+        );
         env_loader::write_password_hash(env_path, &hash)?;
-        hash.to_string()
+        hash
     } else {
         env_vars.admin_password_hash.clone()
     };
+
+    info!("Hash password admin berhasil dimuat {}", password_hash);
 
     let auth_svc = Argon2AuthService::new(password_hash)?;
     let auth_manager_shared: Arc<Mutex<AuthManager>> = Arc::new(Mutex::new(AuthManager::new(

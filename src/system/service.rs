@@ -5,6 +5,33 @@ use crate::utils::error::{AppError, AppResult};
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use tracing::{info, warn};
+
+/// Periksa apakah proses dengan PID tertentu masih berjalan
+#[cfg(target_os = "windows")]
+fn is_process_running(pid: u32) -> bool {
+    use windows::Win32::Foundation::HANDLE;
+    use windows::Win32::System::Threading::{OpenProcess, PROCESS_QUERY_LIMITED_INFORMATION};
+
+    unsafe {
+        let handle: HANDLE =
+            OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, pid).unwrap_or_default();
+        if handle.is_invalid() {
+            return false;
+        }
+        let _ = windows::Win32::Foundation::CloseHandle(handle);
+        true
+    }
+}
+
+#[cfg(not(target_os = "windows"))]
+fn is_process_running(pid: u32) -> bool {
+    // Di non-Windows, gunakan sinyal 0 (tidak membunuh proses, hanya cek ada)
+    std::process::Command::new("kill")
+        .args(["-0", &pid.to_string()])
+        .spawn()
+        .map(|_| true)
+        .unwrap_or(false)
+}
 /// Guard single-instance yang hapus lock file saat drop
 pub struct SingleInstanceGuard {
     lock_path: std::path::PathBuf,
@@ -146,23 +173,45 @@ impl ServiceManager {
 
 /// Acquire single instance lock - standalone function
 pub fn acquire_single_instance_lock(lock_path: PathBuf) -> AppResult<SingleInstanceGuard> {
-    // Jika file sudah ada, baca isinya (opsional) dan kembalikan error
+    // Jika file sudah ada, periksa apakah proses masih berjalan
     if lock_path.exists() {
-        // coba baca PID lama untuk logging (tidak fatal)
+        // Coba baca PID lama
         match std::fs::read_to_string(&lock_path) {
             Ok(s) => {
                 let s = s.trim();
-                return Err(AppError::System(format!(
-                    "Instance lock exists (pid={}). Jika yakin tidak ada proses lain, hapus {} dan coba lagi.",
-                    s,
-                    lock_path.display()
-                )));
+                // Coba parse PID dan periksa apakah proses masih aktif
+                if let Ok(old_pid) = s.parse::<u32>() {
+                    if is_process_running(old_pid) {
+                        // Proses masih berjalan - kembalikan error
+                        return Err(AppError::System(format!(
+                            "Instance lock exists (pid={}). Jika yakin tidak ada proses lain, hapus {} dan coba lagi.",
+                            old_pid,
+                            lock_path.display()
+                        )));
+                    } else {
+                        // Proses sudah tidak berjalan (stale lock) - hapus dan lanjutkan
+                        tracing::warn!(
+                            old_pid = old_pid,
+                            "Stale lock file terdeteksi, menghapus..."
+                        );
+                        if let Err(e) = std::fs::remove_file(&lock_path) {
+                            tracing::warn!(error = %e, "Gagal hapus stale lock");
+                        }
+                    }
+                } else {
+                    // PID tidak valid - hapus dan lanjutkan
+                    tracing::warn!("Lock file berisi PID tidak valid, menghapus...");
+                    if let Err(e) = std::fs::remove_file(&lock_path) {
+                        tracing::warn!(error = %e, "Gagal hapus invalid lock");
+                    }
+                }
             }
             Err(_) => {
-                return Err(AppError::System(format!(
-                    "Instance lock exists: {}",
-                    lock_path.display()
-                )));
+                // Gagal baca file - mungkin corrupt, hapus dan lanjutkan
+                tracing::warn!("Gagal baca lock file, menghapus...");
+                if let Err(e) = std::fs::remove_file(&lock_path) {
+                    tracing::warn!(error = %e, "Gagal hapus corrupt lock");
+                }
             }
         }
     }
