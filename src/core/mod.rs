@@ -6,9 +6,9 @@ pub mod monitor;
 pub mod state;
 pub mod watchdog;
 
+pub use crate::system::service::is_disable_flag_active;
 pub use audit::{audit, init_global_audit, AuditEntry, AuditEventKind, AuditWriter};
 pub use engine::{AppEngine, OverlayCallback, OverlayRequest};
 pub use events::{AppEvent, ComponentId};
 pub use state::{AppState, StateData, StateManager};
-pub use crate::system::service::is_disable_flag_active;
-pub use watchdog::WatchdogThread;
+pub use watchdog::{send_watchdog_heartbeat, WatchdogThread};

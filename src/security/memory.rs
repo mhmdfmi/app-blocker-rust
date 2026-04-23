@@ -30,6 +30,10 @@ impl SecureBuffer {
         self.inner.len()
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.inner.is_empty()
+    }
+
     pub fn explicit_zero(&mut self) {
         self.inner.zeroize();
     }
@@ -53,6 +57,12 @@ impl fmt::Debug for SecureBuffer {
 #[derive(Zeroize, ZeroizeOnDrop)]
 pub struct SecureString {
     inner: Vec<u8>,
+}
+
+impl Default for SecureString {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl SecureString {

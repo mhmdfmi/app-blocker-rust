@@ -1,5 +1,4 @@
 /// Konstanta pesan UI dalam Bahasa Indonesia.
-
 // === Judul & Header ===
 pub const APP_NAME: &str = "App Blocker";
 pub const APP_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -12,7 +11,6 @@ pub const OVERLAY_MESSAGE: &str = "Aplikasi terlarang telah terdeteksi dan dihen
 pub const OVERLAY_SUBMESSAGE: &str = "Silakan masukkan kata sandi administrator untuk melanjutkan.";
 pub const OVERLAY_FOOTER: &str =
     "This program was developed by Muhamad Fahmi, Assistant Head of the Computer Lab.";
-pub const OVERLAY_PASSWORD_HINT: &str = "Kata Sandi Admin";
 pub const OVERLAY_SUBMIT_BTN: &str = "Buka Kunci";
 pub const OVERLAY_ATTEMPTS_FORMAT: &str = "Percobaan: {}/{} ";
 pub const OVERLAY_TIMESTAMP_FORMAT: &str = "Waktu: {}";

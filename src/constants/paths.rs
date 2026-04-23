@@ -1,23 +1,65 @@
-/// Konstanta path sistem untuk aplikasi.
+//! Konstanta path sistem untuk aplikasi.
+/// Menggunakan path relatif terhadap direktori kerja (working directory) agar bisa dipindahkan.
+use std::path::PathBuf;
 
-/// Direktori instalasi utama
-pub const APP_DIR: &str = r"C:\AppBlocker";
-
-/// File kunci single instance
-pub const LOCK_FILE: &str = r"C:\AppBlocker\app.lock";
-
-/// Flag disable darurat - jika file ini ada, blokir dihentikan
-pub const DISABLE_FLAG_FILE: &str = r"C:\AppBlocker\disable";
-
-/// Direktori laporan audit
-pub const REPORTS_DIR: &str = r"C:\AppBlocker\reports";
+/// Get the base directory - ALWAYS uses the directory where the exe is located
+/// Ini memastikan app bisa dijalankan dari mana saja (bukan dari working directory).
+pub fn get_app_dir() -> PathBuf {
+    std::env::current_exe()
+        .map(|p| p.parent().unwrap_or(&p).to_path_buf())
+        .unwrap_or_else(|_| PathBuf::from("."))
+}
 
 /// Direktori log aplikasi
-pub const LOGS_DIR: &str = r"C:\AppBlocker\logs";
+pub fn get_logs_dir() -> PathBuf {
+    get_app_dir().join("logs")
+}
+/// Direktori laporan audit
+pub fn get_reports_dir() -> PathBuf {
+    get_app_dir().join("reports")
+}
+
+/// File kunci single instance
+pub fn get_lock_file() -> PathBuf {
+    get_app_dir().join("app.lock")
+}
+
+/// Flag disable darurat - jika file ini ada, blokir dihentikan
+pub fn get_disable_flag_file() -> PathBuf {
+    get_app_dir().join("disable")
+}
+
+/// File konfigurasi utama (relative to exe location)
+pub fn get_default_config_path() -> PathBuf {
+    get_app_dir().join("config/default.toml")
+}
+
+pub fn get_production_config_path() -> PathBuf {
+    get_app_dir().join("config/production.toml")
+}
+
+// ===== BACKWARD COMPATIBILITY CONSTANTS ====
+// Menggunakan path relatif terhadap direktori kerja saat ini
+
+/// Direktori utama (current working directory)
+pub const APP_DIR: &str = ".";
+
+/// File kunci single instance
+pub const LOCK_FILE: &str = "app.lock";
+
+/// Flag disable darurat
+pub const DISABLE_FLAG_FILE: &str = "disable";
+
+/// Direktori laporan audit
+pub const REPORTS_DIR: &str = "reports";
+
+/// Direktori log aplikasi
+pub const LOGS_DIR: &str = "logs";
 
 /// File konfigurasi utama
-pub const DEFAULT_CONFIG_PATH: &str = r"config\default.toml";
-pub const PRODUCTION_CONFIG_PATH: &str = r"config\production.toml";
+pub const DEFAULT_CONFIG_PATH: &str = "config/default.toml";
+
+pub const PRODUCTION_CONFIG_PATH: &str = "config/production.toml";
 
 /// File .env untuk kredensial
 pub const ENV_FILE: &str = ".env";

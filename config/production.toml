@@ -97,8 +97,9 @@ anti_debugging = true
 check_disable_flag_interval_ms = 2000
 
 [watchdog]
-heartbeat_interval_ms = 1000
-max_missed_heartbeats = 5
+# Heartbeat lebih lama dari scan interval monitor (1500ms) agar tidak timeout
+heartbeat_interval_ms = 2000
+max_missed_heartbeats = 3
 max_restart_attempts = 3
 deadlock_timeout_ms = 5000
 

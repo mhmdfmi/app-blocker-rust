@@ -1,6 +1,5 @@
-/// Komponen UI kustom - ctrl IDs, tema warna, layout.
+//! Komponen UI kustom - ctrl IDs, tema warna, layout.
 // use serde::Serialize; // jika ingin serialisasi tema dari config
-
 /// ID kontrol Win32
 pub mod ctrl_id {
     pub const ID_INPUT_PASSWORD: i32 = 101;

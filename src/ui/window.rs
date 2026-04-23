@@ -1,6 +1,5 @@
-/// Primitif manajemen window Win32.
+//! Primitif manajemen window Win32.
 // use crate::utils::error::{AppError, AppResult};  //  Jika Anda ingin menggunakan error handling khusus
-
 /// Encode string Rust ke wide string (null-terminated) untuk Win32
 pub fn to_wide(s: &str) -> Vec<u16> {
     s.encode_utf16().chain(std::iter::once(0)).collect()

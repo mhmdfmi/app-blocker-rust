@@ -106,6 +106,7 @@ impl ProcessService for WindowsProcessService {
             .map(|(pid, proc)| ProcessInfo::from_sysinfo(pid.as_u32(), proc))
             .collect();
         debug!(count = processes.len(), "Daftar proses diperbarui");
+        info!("Total proses yang terdeteksi: {}", processes.len());
         Ok(processes)
     }
 

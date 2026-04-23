@@ -4,6 +4,7 @@ use crate::config::settings::AppConfig;
 use crate::core::events::{AppEvent, ComponentId};
 // use crate::core::state::AppState;  // Untuk cek apakah state memungkinkan untuk blocking
 use crate::core::state::StateManager;
+use crate::core::watchdog::send_watchdog_heartbeat;
 use crate::detection::DetectionEngine;
 // use crate::system::process::ProcessInfo;  // Untuk logging info proses yang terdeteksi
 use crate::system::process::ProcessService;
@@ -53,10 +54,8 @@ impl MonitorThread {
         let mut kill_rate = KillRateCounter::new(3, Duration::from_secs(60));
 
         loop {
-            // Kirim heartbeat
-            let _ = self.event_tx.send(AppEvent::Heartbeat {
-                component: ComponentId::Monitor,
-            });
+            // Kirim heartbeat via watchdog function
+            send_watchdog_heartbeat(ComponentId::Monitor);
 
             if shutdown_flag.load(std::sync::atomic::Ordering::SeqCst) {
                 info!("Monitor thread: shutdown");
