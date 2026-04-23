@@ -79,7 +79,9 @@ impl DetectionEngine {
         }
 
         // 1. Jadwal - di luar jam sekolah, skip
-        if !self.schedule_service.is_blocking_active() {
+        let is_blocking = self.schedule_service.is_blocking_active();
+        debug!(name = %proc.name, blocking_active = is_blocking, "Schedule check");
+        if !is_blocking {
             debug!("Di luar jadwal blokir, monitoring saja");
             return Ok(None);
         }
@@ -93,6 +95,8 @@ impl DetectionEngine {
             total_score += game_result.confidence;
             reasons.push(format!("game_match:{}", game_result.matched_app));
             matched_game = Some(game_result.matched_app);
+            // DEBUG: Log proses yang cocok dengan blacklist
+            info!(pid = proc.pid, name = %proc.name, app = ?matched_game, "BLACKLIST MATCH!");
         }
 
         // 3. Deteksi bypass
