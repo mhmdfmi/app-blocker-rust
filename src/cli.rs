@@ -155,12 +155,11 @@ fn cmd_disable(yes: bool) {
         print!("Yakin ingin menonaktifkan pemblokiran? (y/N): ");
         use std::io::BufRead;
         let mut input = String::new();
-        if std::io::stdin().lock().read_line(&mut input).is_ok() {
-            if !input.trim().eq_ignore_ascii_case("y") {
+        if std::io::stdin().lock().read_line(&mut input).is_ok()
+            && !input.trim().eq_ignore_ascii_case("y") {
                 println!("Dibatalkan.");
                 return;
             }
-        }
     }
     // Buat flag disable
     use crate::system::service::create_disable_flag;
@@ -398,7 +397,7 @@ fn cmd_run_production() {
 fn cmd_version() {
     println!("App Blocker v{}", env!("CARGO_PKG_VERSION"));
     println!("Target : Windows 10/11 (x86_64)");
-    println!("Rust   : {}", "1.70+");
+    println!("Rust   : 1.70+");
     println!("Author : Muhamad Fahmi - Asisten Kepala Lab Komputer");
     println!("License: MIT");
 }

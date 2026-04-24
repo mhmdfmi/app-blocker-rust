@@ -4,8 +4,9 @@ use crate::config::settings::AppConfig;
 use crate::config::ConfigManager;
 use crate::core::audit::{audit, AuditEntry, AuditEventKind};
 use crate::core::events::AppEvent;
-// use crate::core::events::ComponentId;  // Untuk identifikasi thread di event ThreadDied
+use crate::core::events::ComponentId; // Untuk identifikasi thread di event ThreadDied
 use crate::core::state::{AppState, StateManager};
+use crate::core::watchdog::send_watchdog_heartbeat;
 use crate::security::auth::AuthManager;
 // use crate::security::auth::AuthStatus;  // Untuk cek status autentikasi saat unlock
 use crate::system::process::ProcessService;
@@ -107,6 +108,9 @@ impl AppEngine {
         );
 
         loop {
+            // Kirim heartbeat via watchdog function - sekarang watchdog benar2 terima
+            send_watchdog_heartbeat(ComponentId::Engine);
+
             if shutdown_flag.load(std::sync::atomic::Ordering::SeqCst) {
                 info!("Engine: menerima sinyal shutdown");
                 break;

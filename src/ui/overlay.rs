@@ -225,11 +225,11 @@ unsafe extern "system" fn overlay_wnd_proc(
 
             let style_bits: u32 = (ES_PASSWORD as u32)
                 | (ES_AUTOHSCROLL as u32)
-                | WS_CHILD.0 as u32
-                | WS_VISIBLE.0 as u32
-                | WS_BORDER.0 as u32;
+                | WS_CHILD.0
+                | WS_VISIBLE.0
+                | WS_BORDER.0;
             // Jika tipe internal adalah i32/u32, .0 sudah sesuai; bungkus kembali:
-            let style = WINDOW_STYLE(style_bits as u32);
+            let style = WINDOW_STYLE(style_bits);
 
             // Edit control password
             let edit_class = to_wide("EDIT");
@@ -358,7 +358,7 @@ unsafe extern "system" fn overlay_wnd_proc(
         m if m == wm_command => {
             let ctrl = (wparam.0 & 0xFFFF) as i32;
             let notif = (wparam.0 >> 16) as u32;
-            if ctrl == crate::ui::components::ctrl_id::ID_BTN_SUBMIT && notif == BN_CLICKED as u32 {
+            if ctrl == crate::ui::components::ctrl_id::ID_BTN_SUBMIT && notif == BN_CLICKED {
                 handle_submit(hwnd);
             }
             LRESULT(0)

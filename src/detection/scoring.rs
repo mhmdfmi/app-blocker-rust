@@ -34,6 +34,12 @@ pub struct ScoreResult {
     pub factors: Vec<String>,
 }
 
+impl Default for ScoreResult {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ScoreResult {
     pub fn new() -> Self {
         Self {

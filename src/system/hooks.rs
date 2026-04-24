@@ -343,13 +343,13 @@ mod windows_impl {
         let res = panic::catch_unwind(|| {
             if n_code >= 0 {
                 let msg = w_param.0 as u32;
-                if msg == WM_KEYDOWN || msg == WM_SYSKEYDOWN {
-                    if l_param.0 != 0 {
+                if (msg == WM_KEYDOWN || msg == WM_SYSKEYDOWN)
+                    && l_param.0 != 0 {
                         let kbd = &*(l_param.0 as *const KBDLLHOOKSTRUCT);
                         let vk = kbd.vkCode;
 
                         // flags is KBDLLHOOKSTRUCT::flags; access numeric value via .0
-                        let flags_val = kbd.flags.0 as u32;
+                        let flags_val = kbd.flags.0;
                         const LLKHF_ALTDOWN: u32 = 0x20;
 
                         // Block Alt+F4
@@ -367,7 +367,6 @@ mod windows_impl {
                             return LRESULT(1);
                         }
                     }
-                }
             }
             // Not handled: call next hook
             CallNextHookEx(None, n_code, w_param, l_param)

@@ -5,6 +5,39 @@ dan [Semantic Versioning](https://semver.org/lang/id/).
 
 ---
 
+## [1.1.3] - 2026-04-24
+
+### Diketahui (Known Issues)
+
+- **Monitoring berhenti setelah blockir** — Pada beberapa kasus, proses monitoring
+  berhenti dan tidak mau melakukan blockir secara otomatis. Kemungkinan disebabkan
+  oleh thread yang mati atau crash. Solusi sementara: restart aplikasi secara manual.
+- **Bug load environment variable format argon2** — Program tidak dapat mendeteksi
+  dengan baik tanda `$` pada password hash yang disimpan di file `.env`, yang
+  menyebabkan hash tidak terdeteksi dengan baik.
+- **Install script belum sepenuhnya berjalan** — Script instalasi belum sepenuhnya
+  berfungsi.
+- **Password hash disimpan di dalam program** — Untuk saat ini, password hash disimpan
+  di dalam program sehingga perubahan password tidak akan berlaku. Solusi
+  sementara: gunakan password default `Admin12345!`.
+
+### Ditambahkan (New Features)
+
+- **Running script** (`scripts/running_service.ps1`) — Script untuk menjalankan
+  program tanpa membuka window log.
+
+### Cara Instalasi Sementara
+
+Untuk menjalankan prototype:
+
+1. Salin atau unduh file `app_blocker.exe` ke direktori manapun, contoh:
+   `C:\AppBlocker`
+2. Salin folder `config` yang berisi `default.toml` dan `production.toml` ke
+   direktori yang sama: `C:\AppBlocker\config`
+3. Jalankan program via script `running_service.ps1` atau langsung via executable
+
+---
+
 ## [1.1.2] - 2026-04-21
 
 ### Diperbaiki (Bug Fixes)

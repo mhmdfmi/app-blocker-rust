@@ -33,11 +33,20 @@ Write-Host "[1/4] Menghentikan service '$ServiceName'..." -ForegroundColor Green
 $svc = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
 if ($svc) {
     if ($svc.Status -ne "Stopped") {
-        Stop-Service -Name $ServiceName -Force -ErrorAction SilentlyContinue
-        Start-Sleep -Seconds 3
+        try {
+            Stop-Service -Name $ServiceName -Force -ErrorAction Stop
+            Start-Sleep -Seconds 3
+        } catch {
+            Write-Host "      Warning: Gagal hentikan service, mungkin sudah berhenti." -ForegroundColor Yellow
+        }
     }
-    sc.exe delete $ServiceName | Out-Null
-    Write-Host "      Service dihapus."
+    # Hapus service dengan sc.exe
+    $deleteResult = sc.exe delete $ServiceName 2>&1
+    if ($LASTEXITCODE -eq 0) {
+        Write-Host "      Service dihapus."
+    } else {
+        Write-Host "      Service mungkin sudah dihapus atau tidak ada."
+    }
 } else {
     Write-Host "      Service tidak ditemukan (sudah dihapus)."
 }
@@ -46,10 +55,25 @@ if ($svc) {
 Write-Host "[2/4] Menghentikan proses app_blocker.exe..." -ForegroundColor Green
 $procs = Get-Process -Name "app_blocker" -ErrorAction SilentlyContinue
 if ($procs) {
-    $procs | Stop-Process -Force
+    $procs | Stop-Process -Force -ErrorAction SilentlyContinue
+    Start-Sleep -Seconds 2
+    # Cek lagi jika ada yang masih berjalan
+    $procs = Get-Process -Name "app_blocker" -ErrorAction SilentlyContinue
+    if ($procs) {
+        Write-Host "      Warning: Proses masih berjalan, forced kill..." -ForegroundColor Yellow
+        $procs | Stop-Process -Force -ErrorAction SilentlyContinue
+    }
     Write-Host "      Proses dihentikan."
 } else {
     Write-Host "      Tidak ada proses yang berjalan."
+}
+
+# Hapus juga proses lain yang mungkin terkait
+$otherProcs = Get-Process | Where-Object {
+    $_.Name -like "*app_blocker*" -or $_.Name -like "*AppBlocker*"
+} -ErrorAction SilentlyContinue
+if ($otherProcs) {
+    $otherProcs | Stop-Process -Force -ErrorAction SilentlyContinue
 }
 
 # ── 3. Bersihkan file ─────────────────────────────────────────────────────────

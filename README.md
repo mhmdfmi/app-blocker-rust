@@ -7,6 +7,9 @@
 
 > **Dikembangkan oleh Muhamad Fahmi — Asisten Kepala Lab Komputer**
 
+> ⚠️ **Prototipe** — Mungkin beberapa fitur atau proses masih belum berjalan
+> sepenuhnya dengan baik. Lihat bagian "Diketahui" untuk detail.
+
 Sistem produksi berbasis Rust untuk memblokir aplikasi terlarang (game, platform game)
 di lab komputer selama jam operasional sekolah, dilengkapi overlay UI fullscreen Win32,
 autentikasi Argon2id, dan audit logging terstruktur.
@@ -31,6 +34,24 @@ autentikasi Argon2id, dan audit logging terstruktur.
 
 ---
 
+## Diketahui (Known Issues)
+
+⚠️ Beberapa fitur atau proses masih belum berjalan sepenuhnya dengan baik:
+
+- **Monitoring berhenti setelah blockir** — Pada beberapa kasus, proses monitoring
+  berhenti dan tidak mau melakukan blockir secara otomatis. Kemungkinan disebabkan
+  oleh thread yang mati atau crash. Solusi sementara: restart aplikasi secara manual.
+- **Bug load environment variable format argon2** — Program tidak dapat mendeteksi
+  dengan baik tanda `$` pada password hash yang disimpan di file `.env`, yang
+  menyebabkan hash tidak terdeteksi dengan baik.
+- **Install script belum sepenuhnya berjalan** — Script instalasi belum sepenuhnya
+  berfungsi.
+- **Password hash disimpan di dalam program** — Untuk saat ini, password hash disimpan
+  di dalam program sehingga perubahan password tidak akan berlaku. Solusi
+  sementara: gunakan password default `Admin12345!`.
+
+---
+
 ## Persyaratan
 
 - **OS**: Windows 10 / Windows 11 (x86_64)
@@ -41,7 +62,25 @@ autentikasi Argon2id, dan audit logging terstruktur.
 
 ## Instalasi Cepat
 
-### 1. Build dari Source
+### Opsi 1: Prototype (Tanpa Build)
+
+Untuk menjalankan prototype tanpa build dari source:
+
+1. Unduh atau salin file `app_blocker.exe` ke direktori pilihan, contoh:
+   `C:\AppBlocker`
+2. Salin folder `config` yang berisi `default.toml` dan `production.toml` ke
+   direktori yang sama: `C:\AppBlocker\config`
+3. Jalankan program:
+
+```powershell
+# Lewat script (tanpa window log)
+.\scripts\running_service.ps1
+
+# Atau langsung via executable
+.\app_blocker.exe run-production
+```
+
+### Opsi 2: Build dari Source
 
 ```powershell
 # Clone atau ekstrak proyek
@@ -271,6 +310,8 @@ cargo test engine_tests
 MIT License — Lihat [LICENSE](LICENSE)
 
 ---
+
+## Credit
 
 _Dikembangkan oleh **Muhamad Fahmi**, Asisten Kepala Lab Komputer_
 _This program was developed by Muhamad Fahmi, Assistant Head of the Computer Lab._

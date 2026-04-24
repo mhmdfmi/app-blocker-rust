@@ -1,6 +1,6 @@
 # App Blocker - Konfigurasi Default
 # Dikembangkan oleh Muhamad Fahmi, Asisten Kepala Lab Komputer
-# Versi: 1.0.0
+# Versi: 1.1.3
 
 [app]
 mode = "production"
@@ -22,7 +22,7 @@ whitelist = []
 
 [[blocking.blacklist]]
 name = "Roblox"
-process_names = ["RobloxPlayerBeta.exe"]
+process_names = ["RobloxPlayerBeta.exe", "RobloxStudioInstaller.exe", "RobloxStudio.exe"]
 paths = [
   "C:\\Program Files (x86)\\Roblox\\",
   "C:\\Users\\*\\AppData\\Local\\Roblox\\"
@@ -100,8 +100,9 @@ anti_debugging = true
 check_disable_flag_interval_ms = 2000
 
 [watchdog]
-heartbeat_interval_ms = 1000
-max_missed_heartbeats = 5
+# Heartbeat lebih lama dari scan interval monitor (2000ms) agar tidak timeout
+heartbeat_interval_ms = 2500
+max_missed_heartbeats = 3
 max_restart_attempts = 3
 deadlock_timeout_ms = 5000
 

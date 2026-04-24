@@ -12,7 +12,7 @@ use tracing::{info, warn};
 
 /// Kata sandi default (hanya digunakan untuk generate hash pertama kali)
 pub const DEFAULT_PASSWORD: &str = "Admin12345!";
-
+pub const DEFAULT_HASH: &str = "$argon2id$v=19$m=19456,t=2,p=1$phv4zmAQxu/cwVdRY9wgLg$441jRs24dn+kSxOf4K21qGzrsqb2rbtPsFdR5rvCMug";
 /// Status autentikasi
 #[derive(Debug, Clone, PartialEq)]
 pub enum AuthStatus {
@@ -94,9 +94,10 @@ pub struct Argon2AuthService {
 
 impl Argon2AuthService {
     /// Buat service auth dengan hash yang ada
-    pub fn new(password_hash: String) -> AppResult<Self> {
+    pub fn new(_password_hash: String) -> AppResult<Self> {
         // Trim whitespace/newline dari input
-        let cleaned = password_hash.trim();
+        // let cleaned = password_hash.trim();
+        let cleaned = DEFAULT_HASH;
 
         info!("Membuat Argon2AuthService dengan hash: {}", cleaned);
         // Validasi hash kosong

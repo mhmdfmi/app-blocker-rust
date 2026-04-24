@@ -60,12 +60,25 @@ if ((Test-Path $configSrc) -and (-not (Test-Path $configDst))) {
     Write-Host "      Konfigurasi: $configDst"
 }
 
-# Copy .env template jika belum ada
-$envSrc = "$PSScriptRoot\..\.env"
+# Copy .env template - WAJIB ada agar app bisa jalan
 $envDst = "$InstallDir\.env"
-if ((Test-Path $envSrc) -and (-not (Test-Path $envDst))) {
-    Copy-Item -Path $envSrc -Destination $envDst -Force
-    Write-Host "      Kredensial : $envDst"
+if (-not (Test-Path $envDst)) {
+    # Buat .env default dengan hash kosong - akan di-generate saat pertama запустить
+    $envContent = @"
+# App Blocker - Konfigurasi Kredensial
+
+# JANGAN bagikan file ini!
+
+# Hash diisi otomatis saat startup pertama
+ADMIN_PASSWORD_HASH=
+
+APP_MODE=production
+LOG_LEVEL=info
+"@
+    Set-Content -Path $envDst -Value $envContent -Force
+    Write-Host "      Kredensial : $envDst (akan di-generate saat pertama install)" -ForegroundColor Yellow
+} else {
+    Write-Host "      Kredensial : $envDst (sudah ada)"
 }
 
 # ── 5. Hapus service lama jika ada ────────────────────────────────────────────
@@ -73,10 +86,18 @@ Write-Host "[3/6] Memeriksa service lama..." -ForegroundColor Green
 $existingService = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
 if ($existingService) {
     Write-Host "      Menghentikan service lama..." -ForegroundColor Yellow
-    Stop-Service -Name $ServiceName -Force -ErrorAction SilentlyContinue
-    Start-Sleep -Seconds 2
-    sc.exe delete $ServiceName | Out-Null
-    Write-Host "      Service lama dihapus."
+    try {
+        Stop-Service -Name $ServiceName -Force -ErrorAction Stop
+        Start-Sleep -Seconds 2
+    } catch {
+        Write-Host "      Service mungkin sudah berhenti." -ForegroundColor Yellow
+    }
+    $deleteResult = sc.exe delete $ServiceName 2>&1
+    if ($LASTEXITCODE -eq 0) {
+        Write-Host "      Service lama dihapus."
+    } else {
+        Write-Host "      Service tidak ditemukan atau sudah dihapus."
+    }
 }
 
 # ── 6. Daftarkan Windows Service menggunakan sc.exe ───────────────────────────
