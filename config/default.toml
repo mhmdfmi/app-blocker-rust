@@ -1,6 +1,6 @@
 # App Blocker - Konfigurasi Default
 # Dikembangkan oleh Muhamad Fahmi, Asisten Kepala Lab Komputer
-# Versi: 1.1.2
+# Versi: 1.1.3
 
 [app]
 mode = "production"

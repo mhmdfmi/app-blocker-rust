@@ -1,4 +1,4 @@
-/// Entry point App Blocker v1.1.2
+/// Entry point App Blocker v1.1.3
 /// Fix: Arc::try_unwrap anti-pattern, ctrlc real handler, config watcher thread,
 ///      student mode, audit logger, ConfigManager di engine.
 use app_blocker_lib::{
