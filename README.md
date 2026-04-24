@@ -57,6 +57,7 @@ autentikasi Argon2id, dan audit logging terstruktur.
 - **OS**: Windows 10 / Windows 11 (x86_64)
 - **Rust**: 1.70+ (`rustup update stable`)
 - **Privilege**: Administrator (untuk kill proses dan install service)
+- **Vc Redist x86_64**: Dibutuhkan untuk execute file
 
 ---
 
@@ -191,9 +192,11 @@ app_blocker/
 ├── config/
 │   ├── default.toml    # Konfigurasi default
 │   └── production.toml # Konfigurasi produksi
+├── examples/ # Contoh File Konfigurasi
 └── scripts/
     ├── install_service.ps1
-    └── uninstall_service.ps1
+    ├── uninstall_service.ps1
+    └── running_service.ps1
 ```
 
 ### Alur Data

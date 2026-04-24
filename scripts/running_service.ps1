@@ -1,1 +1,1 @@
-Start-Process -FilePath "C:\AppBlocker\app_blocker.exe" -ArgumentList "run-production --config C:\AppBlocker\config\default.toml" -WorkingDirectory "C:\AppBlocker" -NoNewWindow -WindowStyle Hidden
+Start-Process -FilePath "C:\AppBlocker\app_blocker.exe" -ArgumentList "run-production --config C:\AppBlocker\config\default.toml" -WorkingDirectory "C:\AppBlocker" -WindowStyle Hidden
