@@ -74,9 +74,15 @@ Untuk menjalankan prototype tanpa build dari source:
 3. Jalankan program:
 
 ```powershell
+# Opsi 1
 # Lewat script (tanpa window log)
 .\scripts\running_service.ps1
 
+# Opsi 2
+# Buat sebagai task schedule
+.\script\task_scheduler.bat
+
+# Opsi 3
 # Atau langsung via executable
 .\app_blocker.exe run-production
 ```
