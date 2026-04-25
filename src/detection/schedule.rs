@@ -2,7 +2,7 @@
 use crate::config::settings::ScheduleConfig;
 use crate::utils::error::{AppError, AppResult};
 use crate::utils::time::parse_day_name;
-use chrono::{Local, NaiveTime, Timelike, Datelike, Weekday};
+use chrono::{Datelike, Local, NaiveTime, Timelike, Weekday};
 use tracing::{debug, warn};
 
 /// Satu aturan jadwal yang sudah diparsing
@@ -25,24 +25,27 @@ impl ScheduleService {
     /// Buat service dari konfigurasi
     pub fn new(config: &ScheduleConfig) -> AppResult<Self> {
         if !config.enabled {
-            return Ok(Self { enabled: false, rules: Vec::new() });
+            return Ok(Self {
+                enabled: false,
+                rules: Vec::new(),
+            });
         }
 
         let mut rules = Vec::new();
         for rule in &config.rules {
-            let days: Vec<u8> = rule.days.iter()
-                .filter_map(|d| parse_day_name(d))
-                .collect();
+            let days: Vec<u8> = rule.days.iter().filter_map(|d| parse_day_name(d)).collect();
 
             if days.is_empty() {
                 warn!(days = ?rule.days, "Aturan jadwal tidak memiliki hari valid");
                 continue;
             }
 
-            let start = parse_time(&rule.start)
-                .map_err(|e| AppError::Config(format!("Waktu mulai tidak valid '{}': {e}", rule.start)))?;
-            let end = parse_time(&rule.end)
-                .map_err(|e| AppError::Config(format!("Waktu selesai tidak valid '{}': {e}", rule.end)))?;
+            let start = parse_time(&rule.start).map_err(|e| {
+                AppError::Config(format!("Waktu mulai tidak valid '{}': {e}", rule.start))
+            })?;
+            let end = parse_time(&rule.end).map_err(|e| {
+                AppError::Config(format!("Waktu selesai tidak valid '{}': {e}", rule.end))
+            })?;
 
             if start >= end {
                 return Err(AppError::Config(format!(
@@ -51,11 +54,19 @@ impl ScheduleService {
                 )));
             }
 
-            rules.push(ParsedRule { days, start, end, action: rule.action.clone() });
+            rules.push(ParsedRule {
+                days,
+                start,
+                end,
+                action: rule.action.clone(),
+            });
         }
 
         debug!(rule_count = rules.len(), "Jadwal berhasil dimuat");
-        Ok(Self { enabled: true, rules })
+        Ok(Self {
+            enabled: true,
+            rules,
+        })
     }
 
     /// Apakah pemblokiran aktif pada waktu saat ini?
@@ -116,10 +127,13 @@ fn parse_time(s: &str) -> Result<NaiveTime, String> {
     if parts.len() != 2 {
         return Err(format!("Format waktu harus HH:MM, dapat: '{s}'"));
     }
-    let h: u32 = parts[0].parse().map_err(|_| format!("Jam tidak valid: '{}'", parts[0]))?;
-    let m: u32 = parts[1].parse().map_err(|_| format!("Menit tidak valid: '{}'", parts[1]))?;
-    NaiveTime::from_hms_opt(h, m, 0)
-        .ok_or_else(|| format!("Waktu tidak valid: {h}:{m}"))
+    let h: u32 = parts[0]
+        .parse()
+        .map_err(|_| format!("Jam tidak valid: '{}'", parts[0]))?;
+    let m: u32 = parts[1]
+        .parse()
+        .map_err(|_| format!("Menit tidak valid: '{}'", parts[1]))?;
+    NaiveTime::from_hms_opt(h, m, 0).ok_or_else(|| format!("Waktu tidak valid: {h}:{m}"))
 }
 
 /// Konversi chrono Weekday ke angka (0=Senin)

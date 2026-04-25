@@ -41,9 +41,7 @@ impl BypassDetector {
             .collect();
 
         // Drive D: ke Z: potensial removable/USB (A: B: system, C: biasanya system)
-        let removable_drive_prefixes = ('d'..='z')
-            .map(|c| format!("{c}:\\"))
-            .collect();
+        let removable_drive_prefixes = ('d'..='z').map(|c| format!("{c}:\\")).collect();
 
         Self {
             known_game_exes,
@@ -83,7 +81,11 @@ impl BypassDetector {
                         .map(|s| s.to_string_lossy().to_lowercase())
                         .unwrap_or_default();
 
-                    if self.known_game_exes.iter().any(|g| filename.contains(g.as_str()) || g.contains(filename.as_str())) {
+                    if self
+                        .known_game_exes
+                        .iter()
+                        .any(|g| filename.contains(g.as_str()) || g.contains(filename.as_str()))
+                    {
                         warn!(pid = proc.pid, exe, "Deteksi eksekusi USB game!");
                         return Some(BypassDetectionResult {
                             method: BypassMethod::UsbExecution,
@@ -113,9 +115,13 @@ impl BypassDetector {
                 && proc.cpu_usage > 30.0
             {
                 // Cek apakah salah satunya cocok dengan game yang dikenal
-                let file_is_game = self.known_game_exes.iter()
+                let file_is_game = self
+                    .known_game_exes
+                    .iter()
                     .any(|g| filename.contains(g.as_str()));
-                let proc_is_game = self.known_game_exes.iter()
+                let proc_is_game = self
+                    .known_game_exes
+                    .iter()
                     .any(|g| proc_name_stem.contains(g.as_str()));
 
                 if file_is_game || proc_is_game {
@@ -146,8 +152,9 @@ impl BypassDetector {
             let proc_name_lower = proc.name.to_lowercase().replace(".exe", "");
 
             // Apakah nama proses cocok dengan game yang dikenal?
-            let is_known_game = self.known_game_exes.iter()
-                .any(|g| proc_name_lower.contains(g.as_str()) || g.contains(proc_name_lower.as_str()));
+            let is_known_game = self.known_game_exes.iter().any(|g| {
+                proc_name_lower.contains(g.as_str()) || g.contains(proc_name_lower.as_str())
+            });
 
             if is_known_game {
                 // Apakah lokasinya bukan di folder instalasi standar?
@@ -156,14 +163,12 @@ impl BypassDetector {
                     r"c:\program files (x86)",
                     r"c:\riot games",
                 ];
-                let in_standard_path = standard_paths.iter()
-                    .any(|p| exe_lower.starts_with(p));
+                let in_standard_path = standard_paths.iter().any(|p| exe_lower.starts_with(p));
 
                 if !in_standard_path {
                     warn!(
                         pid = proc.pid,
-                        exe,
-                        "Deteksi portable app game di lokasi tidak standar!"
+                        exe, "Deteksi portable app game di lokasi tidak standar!"
                     );
                     return Some(BypassDetectionResult {
                         method: BypassMethod::PortableApp,

@@ -156,10 +156,11 @@ fn cmd_disable(yes: bool) {
         use std::io::BufRead;
         let mut input = String::new();
         if std::io::stdin().lock().read_line(&mut input).is_ok()
-            && !input.trim().eq_ignore_ascii_case("y") {
-                println!("Dibatalkan.");
-                return;
-            }
+            && !input.trim().eq_ignore_ascii_case("y")
+        {
+            println!("Dibatalkan.");
+            return;
+        }
     }
     // Buat flag disable
     use crate::system::service::create_disable_flag;

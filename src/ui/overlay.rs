@@ -66,8 +66,8 @@ fn run_overlay_win32(
             UI::WindowsAndMessaging::{
                 CreateWindowExW, DispatchMessageW, GetMessageW, RegisterClassExW, SetTimer,
                 SetWindowPos, ShowWindow, TranslateMessage, UnregisterClassW, CS_HREDRAW,
-                CS_VREDRAW, HWND_TOPMOST, MSG, SWP_SHOWWINDOW, SW_SHOW, WNDCLASSEXW,
-                WS_EX_TOPMOST, WS_POPUP, WS_VISIBLE,
+                CS_VREDRAW, HWND_TOPMOST, MSG, SWP_SHOWWINDOW, SW_SHOW, WNDCLASSEXW, WS_EX_TOPMOST,
+                WS_POPUP, WS_VISIBLE,
             },
         },
     };
