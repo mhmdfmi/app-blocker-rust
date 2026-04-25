@@ -56,10 +56,18 @@ impl BehaviorFlags {
     /// Hitung skor tambahan dari behavior flags
     pub fn score(&self) -> u32 {
         let mut s = 0u32;
-        if self.high_cpu        { s += 15; }
-        if self.rapid_spawn     { s += 20; }
-        if self.hidden_process  { s += 20; }
-        if self.suspicious_path { s += 25; }
+        if self.high_cpu {
+            s += 15;
+        }
+        if self.rapid_spawn {
+            s += 20;
+        }
+        if self.hidden_process {
+            s += 20;
+        }
+        if self.suspicious_path {
+            s += 25;
+        }
         s
     }
 
@@ -124,7 +132,10 @@ impl BehaviorAnalyzer {
         if proc.cpu_usage > 50.0 && proc.name.to_lowercase().ends_with(".exe") {
             // Nama generik yang sering dipakai penyamaran
             let generic_names = ["svchost", "conhost", "rundll32", "dllhost"];
-            if !generic_names.iter().any(|n| proc.name.to_lowercase().contains(n)) {
+            if !generic_names
+                .iter()
+                .any(|n| proc.name.to_lowercase().contains(n))
+            {
                 flags.hidden_process = proc.exe_path.is_none();
             }
         }

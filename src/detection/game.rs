@@ -38,10 +38,7 @@ struct BlacklistEntry {
 
 impl GameDetector {
     /// Buat detector dari daftar blacklist
-    pub fn new(
-        blacklist: Vec<BlockedApp>,
-        watched_extensions: Vec<String>,
-    ) -> AppResult<Self> {
+    pub fn new(blacklist: Vec<BlockedApp>, watched_extensions: Vec<String>) -> AppResult<Self> {
         let mut entries = Vec::new();
 
         for app in blacklist {
@@ -64,10 +61,7 @@ impl GameDetector {
             let mut path_regexes = Vec::new();
             for path in &app.paths {
                 // Konversi glob-like path ke regex
-                let pattern = format!(
-                    "(?i){}",
-                    regex::escape(path).replace(r"\*", ".*")
-                );
+                let pattern = format!("(?i){}", regex::escape(path).replace(r"\*", ".*"));
                 match Regex::new(&pattern) {
                     Ok(r) => path_regexes.push(r),
                     Err(e) => {
@@ -134,13 +128,12 @@ impl GameDetector {
         // 3. Cek ekstensi (confidence lebih rendah)
         if let Some(exe_path) = &proc.exe_path {
             for ext in &self.watched_extensions {
-                if exe_path.to_lowercase().ends_with(ext.to_lowercase().as_str()) {
+                if exe_path
+                    .to_lowercase()
+                    .ends_with(ext.to_lowercase().as_str())
+                {
                     // Ekstensi cocok tapi perlu skor lebih untuk blokir
-                    debug!(
-                        path = exe_path,
-                        ext,
-                        "Ekstensi cocok (perlu skor tambahan)"
-                    );
+                    debug!(path = exe_path, ext, "Ekstensi cocok (perlu skor tambahan)");
                 }
             }
         }
