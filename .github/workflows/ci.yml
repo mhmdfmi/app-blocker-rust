@@ -2,14 +2,20 @@ name: App Blocker CI/CD
 
 on:
   push:
-    branches: [main, develop]
+    branches: [main]
     tags: ["v*"]
+  release:
+    types: [published]
+  workflow_dispatch: {}
   pull_request:
     branches: [main]
 
 env:
   CARGO_TERM_COLOR: always
   RUST_BACKTRACE: 1
+
+permissions:
+  contents: write
 
 jobs:
   # ── Build & Test ─────────────────────────────────────────────────────────────
@@ -80,30 +86,51 @@ jobs:
     name: Buat Release
     runs-on: windows-latest
     needs: [build-and-test, security-audit]
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') || github.event_name == 'release' }}
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout kode (full fetch)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - uses: dtolnay/rust-toolchain@stable
+      - name: Debug show ref (temporary)
+        shell: pwsh
+        run: |
+          Write-Host "EVENT: $env:GITHUB_EVENT_NAME"
+          Write-Host "REF: $env:GITHUB_REF"
+          Write-Host "REF_NAME: $env:GITHUB_REF_NAME"
+          Write-Host "ACTOR: $env:GITHUB_ACTOR"
+          Write-Host "Contents of target/release (if any):"
+          if (Test-Path target\release) { Get-ChildItem target\release | ForEach-Object { Write-Host $_.FullName } } else { Write-Host "target/release not found" }
 
-      - name: Build release
-        run: cargo build --release
+      - name: Download build artifact (optional, if build-and-test uploaded it)
+        uses: actions/download-artifact@v4
+        with:
+          name: app_blocker-windows-x64
+          path: ./target/release
 
       - name: Buat arsip ZIP
         shell: pwsh
         run: |
-          $version = "${{ github.ref_name }}"
+          $version = $env:GITHUB_REF_NAME
+          if (-not $version) { $version = "unknown" }
           $zipName = "app_blocker-$version-windows-x64.zip"
-          Compress-Archive -Path @(
-            "target\release\app_blocker.exe",
-            "config\",
-            "scripts\",
-            "README.md",
-            "CHANGELOG.md",
-            "LICENSE"
-          ) -DestinationPath $zipName
-          Write-Host "Dibuat: $zipName"
+
+          if (-not (Test-Path "target\release\app_blocker.exe")) {
+            Write-Error "Binary release tidak ditemukan: target\release\app_blocker.exe. Membatalkan."
+            exit 1
+          }
+
+          $items = @("target\release\app_blocker.exe","config\","scripts\","README.md","CHANGELOG.md","LICENSE")
+          if (Test-Path ".env") { $items += ".env" }
+
+          $existing = $items | Where-Object { Test-Path $_ }
+          Write-Host "Will archive:"
+          $existing | ForEach-Object { Write-Host " - $_" }
+
+          Compress-Archive -Path $existing -DestinationPath $zipName -Force
+          Write-Host "Created: $zipName"
 
       - name: Buat GitHub Release
         uses: softprops/action-gh-release@v2
