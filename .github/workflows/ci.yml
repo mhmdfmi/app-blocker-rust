@@ -101,8 +101,7 @@ jobs:
             "scripts\",
             "README.md",
             "CHANGELOG.md",
-            "LICENSE",
-            ".env"
+            "LICENSE"
           ) -DestinationPath $zipName
           Write-Host "Dibuat: $zipName"
 
