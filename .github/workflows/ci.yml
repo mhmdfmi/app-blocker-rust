@@ -93,16 +93,37 @@ jobs:
       - name: Buat arsip ZIP
         shell: pwsh
         run: |
-          $version = "${{ github.ref_name }}"
+          # Ambil nama tag dari environment (lebih aman daripada ekspansi langsung)
+          $version = $env:GITHUB_REF_NAME
+          if (-not $version) { $version = "unknown" }
+
           $zipName = "app_blocker-$version-windows-x64.zip"
-          Compress-Archive -Path @(
+
+          # Daftar item yang ingin diarsipkan (opsional: hapus .env jika tidak ingin menyertakan)
+          $items = @(
             "target\release\app_blocker.exe",
             "config\",
             "scripts\",
             "README.md",
             "CHANGELOG.md",
-            "LICENSE"
-          ) -DestinationPath $zipName
+            "LICENSE",
+            ".env"
+          )
+
+          # Pilih hanya path yang benar-benar ada
+          $existing = $items | Where-Object { Test-Path $_ }
+
+          if (-not $existing -or $existing.Count -eq 0) {
+            Write-Error "Tidak ada file atau folder valid untuk diarsipkan. Membatalkan pembuatan ZIP."
+            exit 1
+          }
+
+          Write-Host "File/folder yang akan dimasukkan ke dalam arsip:"
+          $existing | ForEach-Object { Write-Host " - $_" }
+
+          # Buat arsip; -Force untuk menimpa jika file zip sudah ada
+          Compress-Archive -Path $existing -DestinationPath $zipName -Force
+
           Write-Host "Dibuat: $zipName"
 
       - name: Buat GitHub Release
