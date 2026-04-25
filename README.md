@@ -1,6 +1,6 @@
 # App Blocker — Sistem Pemblokiran Aplikasi Lab Komputer
 
-[![Build](https://github.com/mhmdfmi/app-blocker-rust/actions/workflows/ci.yml/badge.svg)](https://github.com/mhmdfmi/app-blocker-rust/actions)
+[![App Blocker CI/CD](https://github.com/mhmdfmi/app-blocker-rust/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/mhmdfmi/app-blocker-rust/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Rust](https://img.shields.io/badge/Rust-1.70%2B-orange.svg)](https://www.rust-lang.org)
 [![Platform](https://img.shields.io/badge/Platform-Windows%2010%2F11-blue.svg)](https://www.microsoft.com/windows)
