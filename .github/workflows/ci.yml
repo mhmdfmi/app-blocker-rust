@@ -2,7 +2,7 @@ name: App Blocker CI/CD
 
 on:
   push:
-    branches: [main, develop]
+    branches: [main]
     tags: ["v*"]
   pull_request:
     branches: [main]
@@ -10,6 +10,9 @@ on:
 env:
   CARGO_TERM_COLOR: always
   RUST_BACKTRACE: 1
+
+permissions:
+  contents: write
 
 jobs:
   # ── Build & Test ─────────────────────────────────────────────────────────────
@@ -93,13 +96,21 @@ jobs:
       - name: Buat arsip ZIP
         shell: pwsh
         run: |
-          # Ambil nama tag dari environment (lebih aman daripada ekspansi langsung)
           $version = $env:GITHUB_REF_NAME
-          if (-not $version) { $version = "unknown" }
-
+          if (-not $version) { $version = "v1.1.3" }
           $zipName = "app_blocker-$version-windows-x64.zip"
 
-          # Daftar item yang ingin diarsipkan (opsional: hapus .env jika tidak ingin menyertakan)
+
+          if ($env:INCLUDE_ENV -eq "true" -and $env:RELEASE_ENV_CONTENT) {
+              $env:RELEASE_ENV_CONTENT | Out-File -FilePath .env -Encoding utf8
+              Write-Host "File .env dibuat dengan konten dari RELEASE_ENV_CONTENT."
+          }
+
+          if (-not (Test-Path "target\release\app_blocker.exe")) {
+            Write-Error "Binary release tidak ditemukan: target\release\app_blocker.exe. Membatalkan."
+            exit 1
+          }
+
           $items = @(
             "target\release\app_blocker.exe",
             "config\",
@@ -110,20 +121,14 @@ jobs:
             ".env"
           )
 
-          # Pilih hanya path yang benar-benar ada
-          $existing = $items | Where-Object { Test-Path $_ }
+          if (Test-Path ".env") { $items += ".env" }
 
-          if (-not $existing -or $existing.Count -eq 0) {
-            Write-Error "Tidak ada file atau folder valid untuk diarsipkan. Membatalkan pembuatan ZIP."
-            exit 1
-          }
+          $existing = $items | Where-Object { Test-Path $_ }
 
           Write-Host "File/folder yang akan dimasukkan ke dalam arsip:"
           $existing | ForEach-Object { Write-Host " - $_" }
 
-          # Buat arsip; -Force untuk menimpa jika file zip sudah ada
           Compress-Archive -Path $existing -DestinationPath $zipName -Force
-
           Write-Host "Dibuat: $zipName"
 
       - name: Buat GitHub Release
