@@ -1,18 +1,19 @@
 //! Bootstrap Module
 //! Inisialisasi semua komponen aplikasi: database, repositories, config, engine
 //!
+//! ALL config from database - no TOML/.env
+//!
 //! Usage:
 //! ```rust
 //! use app_blocker_lib::bootstrap::AppBootstrap;
 //!
-//! let bootstrap = AppBootstrap::new()
+//! let app = AppBootstrap::new()
+//!     .run()
 //!     .await?;
-//!
-//! let app = bootstrap.run().await?;
 //! ```
 
 use crate::config::settings::AppConfig;
-use crate::config::{ConfigManager, DbConfigLoader};
+use crate::config::DbConfigLoader;
 use crate::constants::paths;
 // IMPORTS FOR CONFIGURED COMPONENTS:
 use crate::core::events::ComponentId;
@@ -27,66 +28,107 @@ use crate::repository::{
     BlacklistRepository, ConfigRepository, LogRepository, ScheduleRepository, UserRepository,
     WhitelistRepository,
 };
-use crate::security::auth::AuthManager;
+use crate::security::auth::{Argon2AuthService, AuthManager, DEFAULT_PASSWORD};
 use crate::system::process::WindowsProcessService;
 use crate::utils::error::{AppError, AppResult};
 use sea_orm::DatabaseConnection;
-use std::path::{Path, PathBuf};
 use std::sync::mpsc;
 use std::sync::{Arc, RwLock};
-use tracing::{error, info, warn};
+use tracing::{error, info};
 
 /// Application bootstrap - handles initialization of all components
+/// ALL config from database - no TOML/.env
 pub struct AppBootstrap {
-    /// Path to database file
-    db_path: Option<PathBuf>,
-    /// Path to fallback config TOML file
-    config_path: Option<PathBuf>,
     /// Database connection (initialized after init)
     db: Option<DatabaseConnection>,
     /// Config loader from database
     config_loader: Option<DbConfigLoader>,
-    /// TOML ConfigManager for hot reload fallback
-    toml_config_manager: Option<Arc<ConfigManager>>,
     /// App config (Arc for sharing)
     config: Option<Arc<RwLock<AppConfig>>>,
     /// State manager
     state_manager: Option<Arc<StateManager>>,
     /// Event channel sender
     event_tx: Option<mpsc::Sender<AppEvent>>,
+    /// Password hash loaded from DB
+    password_hash: Option<String>,
 }
 
 impl AppBootstrap {
     /// Create new bootstrap instance
     pub fn new() -> Self {
         Self {
-            db_path: None,
-            config_path: None,
             db: None,
             config_loader: None,
-            toml_config_manager: None,
             config: None,
             state_manager: None,
             event_tx: None,
+            password_hash: None,
         }
     }
 
-    /// Set database path
-    pub fn with_db_path<P: AsRef<Path>>(mut self, path: P) -> Self {
-        self.db_path = Some(path.as_ref().to_path_buf());
-        self
-    }
+    /// Run bootstrap - init DB, load config, return Application
+    pub async fn run(mut self) -> AppResult<Application> {
+        // Step 1: Initialize database
+        self = self.init_database().await?;
 
-    /// Set fallback config path (TOML)
-    pub fn with_config_path<P: AsRef<Path>>(mut self, path: P) -> Self {
-        self.config_path = Some(path.as_ref().to_path_buf());
-        self
+        // Step 2: Load config from DB (including password hash)
+        self = self.load_config().await?;
+
+        // Step 3: Initialize state manager
+        self = self.init_state_manager();
+
+        // Step 4: Initialize event channel
+        self = self.init_event_channel();
+
+        // Step 5: Build repositories
+        let repositories = self.build_repositories()?;
+
+        // Step 6: Build engine
+        let engine = self.build_engine()?;
+
+        info!("Application bootstrap complete");
+
+        // Extract values dengan safe handling
+        let db = self
+            .db
+            .take()
+            .ok_or_else(|| AppError::Config("Database not initialized".to_string()))?;
+        let config = self
+            .config
+            .take()
+            .ok_or_else(|| AppError::Config("Config not loaded".to_string()))?;
+        let config_loader = self
+            .config_loader
+            .take()
+            .ok_or_else(|| AppError::Config("Config loader not initialized".to_string()))?;
+        let state_manager = self
+            .state_manager
+            .take()
+            .ok_or_else(|| AppError::Config("State manager not initialized".to_string()))?;
+        let event_tx = self
+            .event_tx
+            .take()
+            .ok_or_else(|| AppError::Config("Event channel not initialized".to_string()))?;
+        let password_hash = self
+            .password_hash
+            .take()
+            .ok_or_else(|| AppError::Config("Password hash not loaded".to_string()))?;
+
+        Ok(Application {
+            db,
+            config,
+            config_loader,
+            state_manager,
+            event_tx,
+            password_hash,
+            repositories,
+            engine,
+        })
     }
 
     /// Initialize database and run migrations
     pub async fn init_database(mut self) -> AppResult<Self> {
-        // Use AppData path by default
-        let db_path = self.db_path.clone().unwrap_or_else(paths::get_db_path);
+        let db_path = paths::get_db_path();
 
         info!(path = %db_path.display(), "Initializing database...");
 
@@ -114,7 +156,7 @@ impl AppBootstrap {
         Ok(self)
     }
 
-    /// Load configuration from database
+    /// Load configuration from database (including password hash)
     pub async fn load_config(mut self) -> AppResult<Self> {
         let db = self
             .db
@@ -129,38 +171,30 @@ impl AppBootstrap {
         // Get config arc for sharing
         let config = config_loader.get_arc();
 
-        // Also load TOML config for hot reload fallback
-        // Check AppData config first, then fallback to provided path
-        let toml_path = self
-            .config_path
-            .clone()
-            .unwrap_or_else(paths::get_config_path);
-
-        let mut toml_config_manager = None;
-        if toml_path.exists() {
-            info!(path = %toml_path.display(), "Loading fallback config from TOML");
-            match ConfigManager::load(&toml_path) {
-                Ok(mgr) => {
-                    toml_config_manager = Some(Arc::new(mgr));
-                    info!("TOML config loaded for hot reload fallback");
-                }
-                Err(e) => {
-                    warn!(error = %e, "Failed to load TOML config, using DB config only");
-                }
+        // Load password hash from DB (or generate if not exists)
+        let config_repo = ConfigRepository::new(db.clone());
+        let password_hash = match config_repo.get_value("security.password_hash").await {
+            Ok(Some(hash)) if !hash.is_empty() => hash,
+            _ => {
+                // Generate hash baru dari default password
+                info!(
+                    "Password hash belum ada di DB, generate dari default password {}...",
+                    DEFAULT_PASSWORD
+                );
+                let (_svc, hash) = Argon2AuthService::with_default_password()?;
+                // Simpan ke DB
+                let _ = config_repo
+                    .set("security.password_hash", &hash, Some("Admin password hash"))
+                    .await;
+                hash
             }
-        } else {
-            // Auto-create default config in AppData if not exists
-            info!(path = %toml_path.display(), "Creating default config file");
-            if let Err(e) = Self::create_default_config(&toml_path) {
-                warn!(error = %e, "Failed to create default config");
-            }
-        }
+        };
 
-        info!("Configuration loaded from database");
+        info!("Configuration loaded from database - password hash ready");
 
         self.config_loader = Some(config_loader);
-        self.toml_config_manager = toml_config_manager;
         self.config = Some(config);
+        self.password_hash = Some(password_hash);
         Ok(self)
     }
 
@@ -183,24 +217,6 @@ impl AppBootstrap {
                 "State manager not initialized".to_string(),
             ))
         }
-    }
-
-    /// Reload TOML config for hot reload fallback
-    pub fn reload_toml_config(&self) -> AppResult<bool> {
-        if let Some(mgr) = &self.toml_config_manager {
-            let reloaded = mgr.hot_reload()?;
-            if reloaded {
-                info!("TOML config hot reloaded successfully");
-            }
-            Ok(reloaded)
-        } else {
-            Ok(false)
-        }
-    }
-
-    /// Get TOML config manager for external access
-    pub fn get_toml_config_manager(&self) -> Option<Arc<ConfigManager>> {
-        self.toml_config_manager.clone()
     }
 
     /// Initialize event channel
@@ -237,7 +253,7 @@ impl AppBootstrap {
         ))
     }
 
-    /// Build the engine with all dependencies
+    /// Build the engine with all dependencies (using password hash from DB)
     pub fn build_engine(&self) -> AppResult<AppEngine> {
         let config = self
             .config
@@ -262,17 +278,22 @@ impl AppBootstrap {
         // Create process service
         let process_service = Box::new(WindowsProcessService::new(false));
 
-        // Create auth manager - use default for now, can be enhanced to load from DB
-        let auth_svc = crate::security::auth::Argon2AuthService::with_default_password()
-            .map(|(svc, _)| svc)
-            .unwrap_or_else(|_| {
-                // Fallback to default if no password is set
-                let (svc, _) =
-                    crate::security::auth::Argon2AuthService::with_default_password().unwrap();
-                svc
-            });
+        // Create auth manager - use password hash from DB
+        let password_hash = self
+            .password_hash
+            .as_ref()
+            .ok_or_else(|| AppError::Config("Password hash not loaded".to_string()))?;
 
-        let config_guard = self.config.as_ref().unwrap().read().unwrap();
+        let auth_svc = Argon2AuthService::new(password_hash.clone())?;
+
+        // Safe read config with error handling
+        let config_guard = self
+            .config
+            .as_ref()
+            .ok_or_else(|| AppError::Config("Config not loaded".to_string()))?
+            .read()
+            .map_err(|e| AppError::Config(format!("Failed to read config: {}", e)))?;
+
         let max_attempts = config_guard.security.max_auth_attempts;
         let lockout_duration = config_guard.security.lockout_duration_seconds;
         drop(config_guard);
@@ -291,48 +312,23 @@ impl AppBootstrap {
         Ok(engine)
     }
 
-    /// Create default config file in AppData if not exists
-    fn create_default_config(path: &Path) -> std::io::Result<()> {
-        const DEFAULT_CONFIG: &str = include_str!("../config/default.toml");
-        std::fs::write(path, DEFAULT_CONFIG)
+    /// Get database connection
+    pub fn get_db(&self) -> AppResult<DatabaseConnection> {
+        self.db
+            .clone()
+            .ok_or_else(|| AppError::Config("Database not initialized".to_string()))
     }
 
-    /// Build complete application
-    pub async fn build(mut self) -> AppResult<Application> {
-        // Step 1: Initialize database
-        self = self.init_database().await?;
-
-        // Step 2: Load config from DB
-        self = self.load_config().await?;
-
-        // Step 3: Initialize state manager
-        self = self.init_state_manager();
-
-        // Step 4: Initialize event channel
-        self = self.init_event_channel();
-
-        // Step 5: Build repositories
-        let repositories = self.build_repositories()?;
-
-        // Step 6: Build engine
-        let engine = self.build_engine()?;
-
-        info!("Application bootstrap complete");
-
-        Ok(Application {
-            db: self.db.unwrap(),
-            config: self.config.unwrap(),
-            config_loader: self.config_loader.unwrap(),
-            state_manager: self.state_manager.unwrap(),
-            event_tx: self.event_tx.unwrap(),
-            repositories,
-            engine,
-        })
+    /// Get config arc
+    pub fn get_config_arc(&self) -> AppResult<Arc<RwLock<AppConfig>>> {
+        self.config
+            .clone()
+            .ok_or_else(|| AppError::Config("Config not loaded".to_string()))
     }
 
     /// Quick initialization with just database
-    pub async fn quick_init(db_path: &str) -> AppResult<Application> {
-        Self::new().with_db_path(db_path).build().await
+    pub async fn quick_init() -> AppResult<Application> {
+        Self::new().run().await
     }
 }
 
@@ -354,6 +350,8 @@ pub struct Application {
     pub state_manager: Arc<StateManager>,
     /// Event channel sender
     pub event_tx: mpsc::Sender<AppEvent>,
+    /// Password hash from DB (for auth)
+    pub password_hash: String,
     /// All repositories
     pub repositories: (
         ConfigRepository,

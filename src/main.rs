@@ -1,10 +1,12 @@
+// #![windows_subsystem = "windows"]
 /// Entry point App Blocker v1.1.3
 /// Fix: Arc::try_unwrap anti-pattern, ctrlc real handler, config watcher thread,
 ///      student mode, audit logger, ConfigManager di engine.
 /// Update: Semua config dari database, tanpa .env / TOML
+/// Note: Pastikan database sudah terinisialisasi dengan benar sebelum menjalankan aplikasi.
 use app_blocker_lib::{
     cli::{run_command, Cli, Commands},
-    config::{hot_reload::spawn_config_watcher, DbConfigLoader},
+    config::DbConfigLoader,
     constants::paths,
     core::{
         audit::{init_global_audit, AuditEntry, AuditEventKind},
@@ -26,12 +28,12 @@ use app_blocker_lib::{
     ui::{run_overlay, DisplayData},
     utils::{
         error::{AppError, AppResult},
-        logger::init_logger,
+        logger::{flush_logs, init_logger},
     },
 };
 use clap::Parser;
 use std::{
-    path::{Path, PathBuf},
+    path::PathBuf,
     sync::{
         atomic::{AtomicBool, Ordering},
         mpsc, Arc, Mutex,
@@ -70,72 +72,75 @@ fn startup(cli: Cli) -> AppResult<()> {
         .map_err(|e| AppError::Config(format!("Failed to create AppData dir: {}", e)))?;
     info!(path = %paths::get_appdata_dir().display(), "AppData directory ready");
 
-    // ── 0.1. Initialize Database (AppData) ────────────────────────
-    // Initialize DB and preload config to memory cache for fast access
-    info!("Initializing database...");
+    // ── 1. Initialize Database + Load ALL Config from DB ──────────────────
+    // Semua config dari database - tidak ada .env / TOML
+    info!("Initializing database and loading config...");
     let rt = tokio::runtime::Runtime::new()?;
-    let _db_config_cache = rt
+
+    // Init DB dan load semua config ke memory cache
+    let (_db, config_arc, password_hash) = rt
         .block_on(async {
-            let db = app_blocker_lib::db::init::init_database(&paths::get_db_path())
+            let db = init_database(&paths::get_db_path())
                 .await
                 .map_err(|e| AppError::Database(e.to_string()))?;
-            let loader = app_blocker_lib::config::DbConfigLoader::new_with_load(db.clone())
+
+            let loader = DbConfigLoader::new_with_load(db.clone())
                 .await
                 .map_err(|e| AppError::Config(e.to_string()))?;
-            Ok::<_, AppError>(loader.get_arc())
+
+            // Ambil password hash dari DB (atau generate jika belum ada)
+            let config_repo = ConfigRepository::new(db.clone());
+            let password_hash = match config_repo.get_value("security.password_hash").await {
+                Ok(Some(hash)) if !hash.is_empty() => hash,
+                _ => {
+                    // Generate hash baru dari default password
+                    info!(
+                        "Password hash belum ada di DB, generate dari default password {}...",
+                        DEFAULT_PASSWORD
+                    );
+                    let (_svc, hash) = Argon2AuthService::with_default_password()?;
+                    // Simpan ke DB
+                    let _ = config_repo
+                        .set("security.password_hash", &hash, Some("Admin password hash"))
+                        .await;
+                    hash
+                }
+            };
+
+            info!("Config loaded from database - password hash ready");
+
+            Ok::<_, AppError>((db, loader.get_arc(), password_hash))
         })
         .map_err(|e| AppError::Config(format!("DB init failed: {}", e)))?;
-    info!("Database initialized - config loaded to memory cache");
 
-    // ── 1. Load .env ──────────────────────────────────────────────────────────
-    let env_path = Path::new(paths::ENV_FILE);
-    let env_vars = env_loader::load_env(env_path)?;
+    // Ambil config dari Arc
+    let config = config_arc
+        .read()
+        .map_err(|e| AppError::Config(format!("Read config: {}", e)))?
+        .clone();
 
-    // ── 2. Load konfigurasi ───────────────────────────────────────────────────
-    // First check AppData config path
-    let appdata_config_path = paths::get_config_path();
-
-    // Resolve config path: AppData > CLI > default
-    let config_path = if appdata_config_path.exists() {
-        appdata_config_path.clone()
-    } else if cli.config.is_absolute() || cli.config.exists() {
-        cli.config.clone()
+    // ── 2. Inisialisasi logger ────────────────────────────────────────────────
+    // Log level dari DB, fallback ke "info"
+    let log_level = config.logging.level.clone();
+    // Gunakan path dari config, atau fallback ke AppData
+    let log_dir = if config.logging.path.starts_with("C:\\") || config.logging.path.starts_with("/")
+    {
+        PathBuf::from(&config.logging.path)
     } else {
-        // Create default config in AppData
-        info!(path = %appdata_config_path.display(), "Creating default config in AppData");
-        if let Err(e) = create_default_config(&appdata_config_path) {
-            warn!(error = %e, "Failed to create default config");
-        }
-        // Fallback to embedded default
-        std::path::Path::new("config/default.toml").to_path_buf()
+        paths::get_logs_dir()
     };
-
-    let config_mgr = Arc::new(ConfigManager::load(&config_path)?);
-    let config = config_mgr.get()?;
-    let config_arc = config_mgr.get_arc();
-
-    // ── 3. Inisialisasi logger ────────────────────────────────────────────────
-    let log_level = env_vars
-        .log_level
-        .as_deref()
-        .unwrap_or(&config.logging.level)
-        .to_string();
-    let log_dir = PathBuf::from(&config.logging.path);
-    let _log_guard = init_logger(&log_dir, &log_level)?;
+    init_logger(&log_dir, &log_level)?;
 
     info!(
         version  = env!("CARGO_PKG_VERSION"),
         mode     = %config.app.mode,
-        config   = %config_path.display(),
+        db_path  = %paths::get_db_path().display(),
         "App Blocker v{} dimulai", env!("CARGO_PKG_VERSION")
     );
 
     // ── 4. Inisialisasi audit logger ──────────────────────────────────────────
-    let reports_dir = PathBuf::from(&config.logging.path)
-        .parent()
-        .unwrap_or(Path::new("."))
-        .join("reports");
-    init_global_audit(&reports_dir).unwrap_or_else(|e| {
+    // Gunakan direktori reports dari paths.rs (AppData\Local\AppBlocker\reports)
+    init_global_audit(&paths::get_reports_dir()).unwrap_or_else(|e| {
         warn!(error = %e, "Audit logger gagal diinisialisasi (non-fatal)");
     });
     app_blocker_lib::core::audit::audit(
@@ -158,28 +163,11 @@ fn startup(cli: Cli) -> AppResult<()> {
         }
     }
 
-    // let _default_password = SecureString::try_from_str(DEFAULT_PASSWORD)?;
-
     // ── 7. Setup autentikasi ──────────────────────────────────────────────────
-    // FIX: AuthManager dibungkus Arc<Mutex> dari awal, tidak ada try_unwrap
-    let password_hash = if env_vars.admin_password_hash.trim().is_empty() {
-        info!(
-            "Hash belum ada, generate dari default password {}...",
-            DEFAULT_PASSWORD
-        );
-        // Gunakan with_default_password() untuk generate hash baru
-        let (_tmp_svc, hash) = Argon2AuthService::with_default_password()?;
-        info!(
-            "Hash password default berhasil di-generate: {}...",
-            &hash[..30.min(hash.len())]
-        );
-        env_loader::write_password_hash(env_path, &hash)?;
-        hash
-    } else {
-        env_vars.admin_password_hash.clone()
-    };
+    // Password hash sudah di-load di awal startup - gunakan dari DB
+    info!("Auth service initialized from DB config");
 
-    info!("Hash password admin berhasil dimuat {}", password_hash);
+    // Password hash sudah di-load dari async block pertama
 
     let auth_svc = Argon2AuthService::new(password_hash)?;
     let auth_manager_shared: Arc<Mutex<AuthManager>> = Arc::new(Mutex::new(AuthManager::new(
@@ -254,7 +242,8 @@ fn startup(cli: Cli) -> AppResult<()> {
     // auth_manager_shared di-clone untuk overlay callback
     let auth_for_overlay = Arc::clone(&auth_manager_shared);
     let tx_for_overlay_cb = event_tx.clone();
-    let cfg_mgr_for_engine = Arc::clone(&config_mgr);
+    // config_arc dari DbConfigLoader - config dari database
+    // Catatan: set_config_manager di-hilangkan karena config dari DB, bukan TOML
 
     // Ambil AuthManager untuk engine dengan cara aman (bukan try_unwrap)
     // Engine menerima Arc<Mutex<AuthManager>>, bukan owned AuthManager
@@ -284,8 +273,15 @@ fn startup(cli: Cli) -> AppResult<()> {
         engine_auth,
     );
 
-    engine.set_config_manager(cfg_mgr_for_engine);
-    engine.set_student_mode(StudentModeConfig::default());
+    // StudentModeConfig dari DB config
+    let student_config = StudentModeConfig {
+        enabled: config.blocking.behavior_scoring_enabled,
+        disable_task_manager: true,
+        disable_registry_tools: true,
+        disable_cmd: true,
+        apply_only_when_locked: true,
+    };
+    engine.set_student_mode(student_config);
 
     // Set overlay callback - spawn thread UI untuk overlay
     engine.set_overlay_callback(Box::new(move |request| {
@@ -356,12 +352,9 @@ fn startup(cli: Cli) -> AppResult<()> {
             .map_err(|e| AppError::System(format!("Spawn watchdog: {e}")))?;
     }
 
-    // ── 19. FIX: Spawn Config file watcher thread ─────────────────────────────
-    spawn_config_watcher(
-        config_path.clone(),
-        event_tx.clone(),
-        Arc::clone(&shutdown_flag),
-    )?;
+    // ── 19. Config reload via DB ────────────────────────────────────────────
+    // Config dari database - TOML file watcher tidak diperlukan
+    // Untuk reload config: call DbConfigLoader::reload() atau CLI/API
 
     info!("Semua thread berjalan. App Blocker aktif.");
     info!(
@@ -393,13 +386,9 @@ fn startup(cli: Cli) -> AppResult<()> {
         writer.flush();
     }
 
+    // Flush log ke file
+    flush_logs();
+
     info!("App Blocker shutdown selesai.");
     Ok(())
-}
-
-/// Create default config file in AppData directory
-/// Uses embedded config/default.toml content
-fn create_default_config(path: &std::path::Path) -> std::io::Result<()> {
-    const DEFAULT_CONFIG: &str = include_str!("../config/default.toml");
-    std::fs::write(path, DEFAULT_CONFIG)
 }

@@ -1,5 +1,5 @@
 //! Konstanta path sistem untuk aplikasi.
-/// Menggunakan path relatif terhadap direktori kerja (working directory) agar bisa dipindahkan.
+/// Menggunakan AppData\Local\AppBlocker sebagai base dengan subfolder terpisah
 use std::path::PathBuf;
 
 /// Nama folder aplikasi di AppData
@@ -21,40 +21,53 @@ pub fn get_appdata_dir() -> PathBuf {
         .unwrap_or_else(|| get_app_dir().join("data"))
 }
 
-/// Get database path in AppData
-pub fn get_db_path() -> PathBuf {
-    get_appdata_dir().join("core.db")
+/// Get database folder path in AppData
+/// Returns: C:\Users\<username>\AppData\Local\AppBlocker\db
+pub fn get_db_dir() -> PathBuf {
+    get_appdata_dir().join("db")
 }
 
-/// Get config path in AppData
+/// Get database path in AppData
+/// Returns: C:\Users\<username>\AppData\Local\AppBlocker\db\core.db
+pub fn get_db_path() -> PathBuf {
+    get_db_dir().join("core.db")
+}
+
+/// Get logs folder path in AppData
+/// Returns: C:\Users\<username>\AppData\Local\AppBlocker\logs
+pub fn get_logs_dir() -> PathBuf {
+    get_appdata_dir().join("logs")
+}
+
+/// Get reports folder path in AppData
+/// Returns: C:\Users\<username>\AppData\Local\AppBlocker\reports
+pub fn get_reports_dir() -> PathBuf {
+    get_appdata_dir().join("reports")
+}
+
+/// Get config path in AppData (legacy - now using database)
 pub fn get_config_path() -> PathBuf {
     get_appdata_dir().join("config.toml")
 }
 
-/// Ensure AppData directory exists
+/// Ensure all AppData subdirectories exist
 pub fn ensure_appdata_dir() -> std::io::Result<PathBuf> {
     let dir = get_appdata_dir();
     std::fs::create_dir_all(&dir)?;
+    std::fs::create_dir_all(get_db_dir())?;
+    std::fs::create_dir_all(get_logs_dir())?;
+    std::fs::create_dir_all(get_reports_dir())?;
     Ok(dir)
-}
-
-/// Direktori log aplikasi
-pub fn get_logs_dir() -> PathBuf {
-    get_app_dir().join("logs")
-}
-/// Direktori laporan audit
-pub fn get_reports_dir() -> PathBuf {
-    get_app_dir().join("reports")
 }
 
 /// File kunci single instance
 pub fn get_lock_file() -> PathBuf {
-    get_app_dir().join("app.lock")
+    get_appdata_dir().join("app.lock")
 }
 
 /// Flag disable darurat - jika file ini ada, blokir dihentikan
 pub fn get_disable_flag_file() -> PathBuf {
-    get_app_dir().join("disable")
+    get_appdata_dir().join("disable")
 }
 
 /// File konfigurasi utama (relative to exe location)
@@ -67,7 +80,7 @@ pub fn get_production_config_path() -> PathBuf {
 }
 
 // ===== BACKWARD COMPATIBILITY CONSTANTS ====
-// Menggunakan path relatif terhadap direktori kerja saat ini
+// Menggunakan path legacy untuk backward compatibility
 
 /// Direktori utama (current working directory)
 pub const APP_DIR: &str = ".";

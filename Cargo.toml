@@ -6,7 +6,7 @@ authors = ["Muhamad Fahmi <muhamadfahmi3240@gmail.com>"]
 description = "Production-ready Windows App Blocker - real-time monitoring, secure process termination, overlay lock UI, authentication, audit logging"
 license = "MIT"
 rust-version = "1.70"
-build        = "build.rs"
+build = "build.rs"
 
 [lib]
 name = "app_blocker_lib"

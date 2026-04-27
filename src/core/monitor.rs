@@ -53,6 +53,9 @@ impl MonitorThread {
         info!("Monitor thread dimulai");
         let mut kill_rate = KillRateCounter::new(3, Duration::from_secs(60));
 
+        // Tunggu sebentar agar HEARTBEAT_TX watchdog sempat terinisialisasi
+        std::thread::sleep(std::time::Duration::from_secs(2));
+
         loop {
             // Kirim heartbeat via watchdog function
             send_watchdog_heartbeat(ComponentId::Monitor);

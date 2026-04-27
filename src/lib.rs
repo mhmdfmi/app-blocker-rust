@@ -17,7 +17,7 @@ pub mod utils;
 
 // Re-export tipe utama
 pub use bootstrap::{AppBootstrap, Application};
-pub use config::{ConfigManager, DbConfigLoader};
+pub use config::DbConfigLoader; // ConfigManager dihapus - tidak terpakai
 pub use core::audit::{AuditEntry, AuditEventKind, GLOBAL_AUDIT};
 pub use core::{AppEngine, AppEvent, AppState, StateManager};
 pub use metrics::AppMetrics;

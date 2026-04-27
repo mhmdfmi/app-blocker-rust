@@ -19,6 +19,7 @@ use crate::config::settings::{
     // SimulationConfig, // Accessed as: app_config.simulation (type: SimulationConfig)
     // WatchdogConfig,    // Accessed as: app_config.watchdog (type: WatchdogConfig)
 };
+use crate::config::validator;
 use crate::repository::{
     BlacklistRepository, ConfigRepository, ScheduleRepository, WhitelistRepository,
 };
@@ -282,6 +283,14 @@ impl DbConfigLoader {
             .write()
             .map_err(|e| AppError::Config(format!("Failed to write config cache: {}", e)))?;
         *cache = app_config;
+
+        // ⚠️ VALIDATE CONFIG FROM DATABASE
+        // Validate config before using - prevents bad config from causing issues
+        if let Err(e) = validator::validate_config(&cache) {
+            warn!(error = %e, "Config validation failed - using defaults as fallback");
+            // On validation failure, reset to defaults
+            *cache = AppConfig::default();
+        }
 
         info!("Configuration loaded from database successfully");
 

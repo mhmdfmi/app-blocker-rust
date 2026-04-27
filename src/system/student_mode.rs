@@ -2,8 +2,7 @@
 /// Mencegah siswa bypass menggunakan Task Manager, regedit, atau cmd.
 /// Semua perubahan dikembalikan saat unlock berhasil.
 use crate::utils::error::{AppError, AppResult};
-use tracing::{info, warn};
-// use tracing::debug;  // Uncomment jika ingin log debug untuk operasi pembatasan (opsional)
+use tracing::{debug, info, warn};
 
 /// Konfigurasi student mode
 #[derive(Debug, Clone)]
@@ -29,12 +28,19 @@ impl Default for StudentModeConfig {
 }
 
 /// Menerapkan pembatasan student mode
-pub fn apply_restrictions(config: &StudentModeConfig) -> AppResult<()> {
+/// Jika apply_only_when_locked=true, hanya terapkan jika dalam keadaan locked
+pub fn apply_restrictions(config: &StudentModeConfig, is_locked: bool) -> AppResult<()> {
     if !config.enabled {
         return Ok(());
     }
 
-    info!("Student mode: menerapkan pembatasan sistem");
+    // Jika apply_only_when_locked=true tapi tidak locked, skip
+    if config.apply_only_when_locked && !is_locked {
+        debug!("Student mode: skip (apply_only_when_locked & tidak locked)");
+        return Ok(());
+    }
+
+    info!("Student mode: membatasi sistem (locked={})", is_locked);
 
     #[cfg(target_os = "windows")]
     {
@@ -63,7 +69,7 @@ pub fn restore_restrictions(config: &StudentModeConfig) -> AppResult<()> {
         return Ok(());
     }
 
-    info!("Student mode: mengembalikan semua pembatasan sistem");
+    info!("Student mode: mengembalikan pembatasan sistem");
 
     #[cfg(target_os = "windows")]
     {
@@ -84,11 +90,6 @@ pub fn restore_restrictions(config: &StudentModeConfig) -> AppResult<()> {
 /// Nonaktifkan / aktifkan Task Manager via registry
 #[cfg(target_os = "windows")]
 fn set_task_manager_disabled(disable: bool) -> AppResult<()> {
-    // use windows::Win32::System::Registry::{
-    //     RegCloseKey, RegCreateKeyExW, RegDeleteValueW, RegOpenKeyExW, RegSetValueExW,
-    //     HKEY_CURRENT_USER, KEY_SET_VALUE, REG_DWORD,
-    // };
-
     const KEY_PATH: &str = r"Software\Microsoft\Windows\CurrentVersion\Policies\System";
     const VALUE_NAME: &str = "DisableTaskMgr";
 
@@ -145,7 +146,7 @@ fn set_dword_registry_value(key_path: &str, value_name: &str, value: Option<u32>
     use windows::Win32::System::Registry::{
         RegCloseKey, RegCreateKeyExW, RegDeleteValueW, RegSetValueExW, HKEY_CURRENT_USER,
         KEY_SET_VALUE, REG_DWORD, REG_OPTION_NON_VOLATILE,
-    }; // add RegOpenKeyExW if needed for update instead of create
+    };
 
     let key_wide = to_wide(key_path);
     let val_wide = to_wide(value_name);
@@ -167,7 +168,8 @@ fn set_dword_registry_value(key_path: &str, value_name: &str, value: Option<u32>
 
     if result.is_err() {
         return Err(AppError::Win32(format!(
-            "RegCreateKeyEx gagal untuk '{key_path}'"
+            "RegCreateKeyEx gagal untuk '{}'",
+            key_path
         )));
     }
 
@@ -194,7 +196,7 @@ fn set_dword_registry_value(key_path: &str, value_name: &str, value: Option<u32>
                     Some(&bytes),
                 )
             }
-            .map_err(|e| AppError::Win32(format!("RegSetValueEx gagal: {e}")))?;
+            .map_err(|e| AppError::Win32(format!("RegSetValueEx gagal: {}", e)))?;
         }
         None => {
             // Hapus value untuk restore

@@ -190,8 +190,12 @@ mod windows_impl {
         };
 
         if let Some(ht) = maybe_thread {
+            // let _ = ht.stop_tx.send(());
+
             // Send stop signal
-            let _ = ht.stop_tx.send(());
+            if ht.stop_tx.send(()).is_err() {
+                warn!("Failed to signal hook thread stop");
+            }
 
             // Post WM_QUIT to thread if we have thread id
             if ht.thread_id != 0 {
@@ -217,7 +221,10 @@ mod windows_impl {
                     let (done_tx, done_rx) = std::sync::mpsc::channel::<()>();
                     let join_handle = ht.join_handle;
                     std::thread::spawn(move || {
-                        let _ = join_handle.join();
+                        // let _ = join_handle.join();
+                        if join_handle.join().is_err() {
+                            warn!("Hook thread join failed");
+                        }
                         let _ = done_tx.send(());
                     });
 

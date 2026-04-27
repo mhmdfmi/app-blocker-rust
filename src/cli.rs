@@ -170,40 +170,11 @@ fn cmd_disable(yes: bool) {
     }
 }
 
-fn cmd_status(config_path: &Path) {
-    use crate::config::ConfigManager;
-    match ConfigManager::load(config_path) {
-        Ok(mgr) => {
-            if let Ok(cfg) = mgr.get() {
-                println!("═══════════════════════════════════════════");
-                println!("  App Blocker v{}", env!("CARGO_PKG_VERSION"));
-                println!("═══════════════════════════════════════════");
-                println!("  Mode          : {}", cfg.app.mode);
-                println!(
-                    "  Jadwal        : {}",
-                    if cfg.schedule.enabled {
-                        "Aktif"
-                    } else {
-                        "Nonaktif"
-                    }
-                );
-                println!("  Timezone      : {}", cfg.schedule.timezone);
-                println!("  Scan interval : {}ms", cfg.monitoring.scan_interval_ms);
-                println!("  Blacklist      : {} entri", cfg.blocking.blacklist.len());
-                println!("  Simulasi      : {}", cfg.simulation.enabled);
-                println!(
-                    "  Disable flag  : {}",
-                    if crate::system::service::is_disable_flag_active() {
-                        "ADA (blokir off)"
-                    } else {
-                        "Tidak ada"
-                    }
-                );
-                println!("═══════════════════════════════════════════");
-            }
-        }
-        Err(e) => eprintln!("✗ Gagal baca konfigurasi: {e}"),
-    }
+fn cmd_status(_config_path: &Path) {
+    // TODO: Refactor to use Database instead of TOML ConfigManager
+    // ConfigManager di-hapus karena sekarang semua dari database
+    eprintln!("✗ cmd_status butuh refactor ke DB - gunakan API atau CLI baru");
+    eprintln!("  (Config sekarang berpusat di database)");
 }
 
 fn cmd_logs(lines: usize) {
@@ -308,20 +279,9 @@ fn cmd_remove_blacklist(name: &str) {
     println!("  (Edit config/default.toml untuk perubahan permanen)");
 }
 
-fn cmd_list_blacklist(config_path: &Path) {
-    use crate::config::ConfigManager;
-    match ConfigManager::load(config_path) {
-        Ok(mgr) => {
-            if let Ok(cfg) = mgr.get() {
-                println!("Daftar Blacklist ({} entri):", cfg.blocking.blacklist.len());
-                println!("────────────────────────────────────────");
-                for (i, app) in cfg.blocking.blacklist.iter().enumerate() {
-                    println!("  {}. {} → {:?}", i + 1, app.name, app.process_names);
-                }
-            }
-        }
-        Err(e) => eprintln!("✗ {e}"),
-    }
+fn cmd_list_blacklist(_config_path: &Path) {
+    // TODO: Refactor to use Database instead of TOML ConfigManager
+    eprintln!("✗ cmd_list_blacklist butuh refactor ke DB");
 }
 
 fn cmd_add_whitelist(name: &str) {
@@ -333,23 +293,9 @@ fn cmd_remove_whitelist(name: &str) {
     println!("✓ Menghapus '{name}' dari whitelist...");
 }
 
-fn cmd_list_whitelist(config_path: &Path) {
-    use crate::config::ConfigManager;
-    match ConfigManager::load(config_path) {
-        Ok(mgr) => {
-            if let Ok(cfg) = mgr.get() {
-                if cfg.blocking.whitelist.is_empty() {
-                    println!("Whitelist kosong.");
-                } else {
-                    println!("Daftar Whitelist:");
-                    for (i, name) in cfg.blocking.whitelist.iter().enumerate() {
-                        println!("  {}. {}", i + 1, name);
-                    }
-                }
-            }
-        }
-        Err(e) => eprintln!("✗ {e}"),
-    }
+fn cmd_list_whitelist(_config_path: &Path) {
+    // TODO: Refactor to use Database instead of TOML ConfigManager
+    eprintln!("✗ cmd_list_whitelist butuh refactor ke DB");
 }
 
 fn cmd_upload_config(file: &Path) {

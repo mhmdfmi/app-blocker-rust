@@ -5,6 +5,36 @@ dan [Semantic Versioning](https://semver.org/lang/id/).
 
 ---
 
+## [1.2.0] - 2026-04-27
+
+### Diperbaiki (Bug Fixes)
+
+- **Watchdog false positive** — Monitor dan Engine tidak mengirim heartbeat ke watchdog
+  dengan benar, menyebabkan error "Thread mati terdeteksi". Sekarang menggunakan
+  dedicated `HEARTBEAT_TX` channel dengan static OnceLock.
+- **Delay start-up** — Monitor dan Engine kini tunggu 2 detik sebelum loop
+  heartbeat untuk memberi waktu HEARTBEAT_TX terinisialisasi.
+
+### Ditambahkan (New Features)
+
+- **Global Log Guard** (`src/utils/logger.rs`) — Log sekarang disimpan di
+  global static dan bisa di-flush secara eksplisit saat shutdown via
+  `flush_logs()`.
+- **Path reorganization** — Semua data disimpan di `AppData\Local\AppBlocker\`:
+  - `db/core.db` - Database
+  - `logs/` - Log files
+  - `reports/` - Audit reports
+- **Log ke Database** — Logs proses (detected, blocked, allowed) sekarang
+  disimpan ke tabel `logs` di database.
+
+### Diperbarui
+
+- Cargo.toml: update versi ke 1.2.0
+- Config seeding: semua config dari `default.toml` di-seed ke database
+- Logging path defaults ke AppData
+
+---
+
 ## [1.1.3] - 2026-04-24
 
 ### Diketahui (Known Issues)

@@ -44,6 +44,8 @@ pub struct AppEngine {
     auth_manager: Arc<Mutex<AuthManager>>,
     student_mode: StudentModeConfig,
     overlay_callback: Option<OverlayCallback>,
+    /// Log repository untuk menyimpan ke database
+    log_repository: Option<crate::repository::LogRepository>,
     /// Waktu proses diblokir (untuk hitung session_duration)
     block_started_at: Option<std::time::Instant>,
 }
@@ -68,8 +70,14 @@ impl AppEngine {
             auth_manager: Arc::new(Mutex::new(auth_manager)),
             student_mode: StudentModeConfig::default(),
             overlay_callback: None,
+            log_repository: None,
             block_started_at: None,
         }
+    }
+
+    /// Set log repository untuk menyimpan ke database
+    pub fn set_log_repository(&mut self, log_repo: crate::repository::LogRepository) {
+        self.log_repository = Some(log_repo);
     }
 
     /// Set config manager untuk hot reload
@@ -106,6 +114,9 @@ impl AppEngine {
                 env!("CARGO_PKG_VERSION")
             )),
         );
+
+        // Tunggu sebentar agar HEARTBEAT_TX watchdog sempat terinisialisasi
+        std::thread::sleep(std::time::Duration::from_secs(2));
 
         loop {
             // Kirim heartbeat via watchdog function - sekarang watchdog benar2 terima
@@ -279,7 +290,7 @@ impl AppEngine {
         self.block_started_at = Some(std::time::Instant::now());
 
         if self.student_mode.apply_only_when_locked {
-            if let Err(e) = apply_restrictions(&self.student_mode) {
+            if let Err(e) = apply_restrictions(&self.student_mode, true) {
                 warn!(error = %e, "Gagal terapkan student mode (non-fatal)");
             }
         }

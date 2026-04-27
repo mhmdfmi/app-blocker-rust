@@ -4,11 +4,9 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Rust](https://img.shields.io/badge/Rust-1.70%2B-orange.svg)](https://www.rust-lang.org)
 [![Platform](https://img.shields.io/badge/Platform-Windows%2010%2F11-blue.svg)](https://www.microsoft.com/windows)
+[![Version](https://img.shields.io/badge/Version-1.2.0-green.svg)](CHANGELOG.md)
 
 > **Dikembangkan oleh Muhamad Fahmi — Asisten Kepala Lab Komputer**
-
-> ⚠️ **Prototipe** — Mungkin beberapa fitur atau proses masih belum berjalan
-> sepenuhnya dengan baik. Lihat bagian "Diketahui" untuk detail.
 
 Sistem produksi berbasis Rust untuk memblokir aplikasi terlarang (game, platform game)
 di lab komputer selama jam operasional sekolah, dilengkapi overlay UI fullscreen Win32,
@@ -34,21 +32,15 @@ autentikasi Argon2id, dan audit logging terstruktur.
 
 ---
 
-## Diketahui (Known Issues)
+## Lokasi Data
 
-⚠️ Beberapa fitur atau proses masih belum berjalan sepenuhnya dengan baik:
+Semua data disimpan di `C:\Users\<username>\AppData\Local\AppBlocker\`:
 
-- **Monitoring berhenti setelah blockir** — Pada beberapa kasus, proses monitoring
-  berhenti dan tidak mau melakukan blockir secara otomatis. Kemungkinan disebabkan
-  oleh thread yang mati atau crash. Solusi sementara: restart aplikasi secara manual.
-- **Bug load environment variable format argon2** — Program tidak dapat mendeteksi
-  dengan baik tanda `$` pada password hash yang disimpan di file `.env`, yang
-  menyebabkan hash tidak terdeteksi dengan baik.
-- **Install script belum sepenuhnya berjalan** — Script instalasi belum sepenuhnya
-  berfungsi.
-- **Password hash disimpan di dalam program** — Untuk saat ini, password hash disimpan
-  di dalam program sehingga perubahan password tidak akan berlaku. Solusi
-  sementara: gunakan password default `Admin12345!`.
+| Folder      | Isi                            |
+|------------|--------------------------------|
+| `db/`      | Database SQLite (`core.db`)        |
+| `logs/`    | Log aplikasi (`app_blocker.log`)  |
+| `reports/` | Audit reports (`audit_*.jsonl`) |
 
 ---
 
