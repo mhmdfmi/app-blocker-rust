@@ -83,13 +83,16 @@ pub async fn run_migrations(db: &DatabaseConnection) -> Result<(), DbErr> {
         DbErr::Custom(format!("Failed to create configs table: {}", e))
     })?;
 
-    // Create BLACKLIST table
+    // Create BLACKLIST table (updated with required fields: category, publisher, risk_level)
     db.execute_unprepared(
         r#"
         CREATE TABLE IF NOT EXISTS blacklist (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL,
-            description TEXT,
+            description TEXT NOT NULL,
+            category TEXT NOT NULL,
+            publisher TEXT,
+            risk_level TEXT NOT NULL DEFAULT 'medium' CHECK(risk_level IN ('low', 'medium', 'high', 'critical')),
             enabled INTEGER NOT NULL DEFAULT 1 CHECK(enabled IN (0, 1)),
             created_at TEXT NOT NULL DEFAULT (datetime('now')),
             updated_at TEXT NOT NULL DEFAULT (datetime('now'))
@@ -893,7 +896,7 @@ pub async fn insert_config(
 }
 
 /// Generate argon2id password hash for a given password
-fn generate_argon2_hash(password: &str) -> Result<String, DbErr> {
+pub fn generate_argon2_hash(password: &str) -> Result<String, DbErr> {
     let salt = SaltString::generate(&mut OsRng);
     let argon2 = Argon2::default();
 

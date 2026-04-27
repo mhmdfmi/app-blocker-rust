@@ -198,6 +198,23 @@ impl ScheduleRepository {
         Ok(())
     }
 
+    /// Toggle rule enabled/disabled
+    pub async fn toggle_rule(&self, id: i32) -> Result<ScheduleRule, DbErr> {
+        let rule = self
+            .find_rule_by_id(id)
+            .await?
+            .ok_or(DbErr::Custom("Rule not found".to_string()))?;
+
+        let mut updated: crate::models::schedule_rule::ActiveModel = rule.into();
+        let current = updated.enabled.take().unwrap_or(true);
+        updated.enabled = sea_orm::Set(!current);
+        updated.update(&self.db).await?;
+
+        self.find_rule_by_id(id)
+            .await?
+            .ok_or(DbErr::Custom("Failed to retrieve updated rule".to_string()))
+    }
+
     // ============ Combined Operations ============
 
     /// Get schedule with all rules

@@ -32,6 +32,7 @@ dan [Semantic Versioning](https://semver.org/lang/id/).
 - Cargo.toml: update versi ke 1.2.0
 - Config seeding: semua config dari `default.toml` di-seed ke database
 - Logging path defaults ke AppData
+- **Dokumentasi CLI** — Memperbarui README.md dengan daftar lengkap perintah CLI administratif: `stats`, `top-blocked`, `audit-log`, `schedule-list`, `schedule-add`, `schedule-remove`, `schedule-toggle`, `add-blacklist`, `remove-blacklist`, `add-whitelist`, `remove-whitelist`, `upload-config`, `download-config`, `simulation-mode`, `run-simulation`, `run-production`. Semua perintah sekarang tercatat beserta contoh argumen umum.
 
 ---
 

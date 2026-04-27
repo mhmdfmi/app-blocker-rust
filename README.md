@@ -101,22 +101,72 @@ Default password: `Admin12345!`
 ## Penggunaan CLI
 
 ```powershell
-app_blocker.exe [PERINTAH]
+app_blocker.exe [GLOBAL_OPTIONS] [PERINTAH]
 ```
 
-| Perintah         | Deskripsi              |
-| ---------------- | ---------------------- |
-| `status`         | Status sistem          |
-| `enable`         | Aktifkan pemblokiran   |
-| `disable`        | Nonaktifkan darurat    |
-| `logs -n 100`    | Tampilkan log terakhir |
-| `setup-password` | Setup password         |
-| `reset-password` | Reset password         |
-| `list-blacklist` | Daftar diblokir        |
-| `list-whitelist` | Daftar whitelist       |
-| `run-simulation` | Jalankan simulasi      |
-| `run-production` | Jalankan produksi      |
-| `version`        | Info versi             |
+**Global Options:**
+
+| Option                | Deskripsi                                   | Default               |
+| --------------------- | ------------------------------------------- | --------------------- |
+| `--config <PATH>`     | Path file konfigurasi                       | `config/default.toml` |
+| `--log-level <LEVEL>` | Level logging (trace/debug/info/warn/error) | `info`                |
+
+### Monitoring & Operasi
+
+| Perintah           | Deskripsi                                                                           |
+| ------------------ | ----------------------------------------------------------------------------------- |
+| `status`           | Tampilkan status sistem (mode, simulasi, jumlah blacklist/whitelist, scan interval) |
+| `enable`           | Aktifkan pemblokiran                                                                |
+| `disable --yes`    | Nonaktifkan pemblokiran darurat (tanpa konfirmasi interaktif)                       |
+| `logs --lines <N>` | Tampilkan `N` baris log terakhir                                                    |
+| `run-simulation`   | Jalankan dalam mode simulasi (tidak benar-benar kill proses)                        |
+| `run-production`   | Jalankan dalam mode produksi (kill proses nyata)                                    |
+| `version`          | Tampilkan versi dan informasi build                                                 |
+
+### Manajemen Daftar (Blacklist & Whitelist)
+
+| Perintah                                       | Deskripsi                                     | Contoh                                                 |
+| ---------------------------------------------- | --------------------------------------------- | ------------------------------------------------------ |
+| `list-blacklist`                               | Daftar semua aplikasi yang diblokir           | —                                                      |
+| `add-blacklist --name <EXE> --app-name <NAMA>` | Tambah satu proses ke blacklist               | `add-blacklist --name game.exe --app-name "Game Baru"` |
+| `add-blacklist --file <PATH>`                  | Import blacklist dari file JSON (single/bulk) | `add-blacklist --file examples/blacklist_bulk.json`    |
+| `remove-blacklist <NAME>`                      | Hapus aplikasi dari blacklist                 | `remove-blacklist game.exe`                            |
+| `list-whitelist`                               | Daftar semua proses whitelist                 | —                                                      |
+| `add-whitelist --name <EXE>`                   | Tambah proses ke whitelist                    | `add-whitelist --name chrome.exe`                      |
+| `add-whitelist --file <PATH>`                  | Import whitelist dari file JSON               | `add-whitelist --file examples/whitelist_bulk.json`    |
+| `remove-whitelist <NAME>`                      | Hapus proses dari whitelist                   | `remove-whitelist chrome.exe`                          |
+
+### Konfigurasi & Simulasi
+
+| Perintah                          | Deskripsi                                        | Contoh                                 |
+| --------------------------------- | ------------------------------------------------ | -------------------------------------- |
+| `simulation-mode <true/false>`    | Ubah mode simulasi di database                   | `simulation-mode true`                 |
+| `upload-config <FILE>`            | Upload file konfigurasi baru (.json/.toml/.yaml) | `upload-config config_baru.toml`       |
+| `download-config --output <FILE>` | Export konfigurasi saat ini ke file TOML         | `download-config --output backup.toml` |
+
+### Statistik & Audit
+
+| Perintah                              | Deskripsi                                  | Contoh                   |
+| ------------------------------------- | ------------------------------------------ | ------------------------ |
+| `stats --period <day/week/month>`     | Statistik jumlah pemblokiran per periode   | `stats --period week`    |
+| `top-blocked --limit <N>`             | Top `N` proses yang paling sering diblokir | `top-blocked --limit 10` |
+| `audit-log --user <NAME> --limit <N>` | Log aktivitas admin (audit trail)          | `audit-log --limit 50`   |
+
+### Jadwal (Schedule)
+
+| Perintah                                                                     | Deskripsi                    | Contoh                                                                              |
+| ---------------------------------------------------------------------------- | ---------------------------- | ----------------------------------------------------------------------------------- |
+| `schedule-list`                                                              | Tampilkan semua jadwal aktif | —                                                                                   |
+| `schedule-add --days <HARI> --start <HH:MM> --end <HH:MM> --action <ACTION>` | Tambah jadwal baru           | `schedule-add --days "Senin,Selasa" --start 07:00 --end 15:00 --action block_games` |
+| `schedule-remove --id <ID>`                                                  | Hapus jadwal berdasarkan ID  | `schedule-remove --id 1`                                                            |
+| `schedule-toggle --id <ID>`                                                  | Aktifkan/nonaktifkan jadwal  | `schedule-toggle --id 1`                                                            |
+
+### Autentikasi
+
+| Perintah         | Deskripsi                                                  |
+| ---------------- | ---------------------------------------------------------- |
+| `setup-password` | Setup password admin pertama kali                          |
+| `reset-password` | Reset password admin (memerlukan verifikasi password lama) |
 
 ---
 
@@ -270,20 +320,20 @@ Saat aplikasi terlarang terdeteksi, overlay fullscreen akan muncul:
 │                                                          │
 │            Aplikasi berikut diblokir:                    │
 │                                                          │
-│               [Nama Proses] - Roblox                    │
+│               [Nama Proses] - Roblox                     │
 │                                                          │
 │               PC: LAB-KOMPUTER-01                        │
-│               Waktu: 07:45:23                           │
+│               Waktu: 07:45:23                            │
 │                                                          │
 │     _______________________________________________      │
-│     |                                             |     │
-│     |         MASUKAN PASSWORD ADMIN           |     │
-│     |                                             |     │
-│     |     [ ********************************* ]  |     │
-│     |                                             |     │
-│     |______________[ UNLOCK ]___________________|     │
+│     |                                             |      │
+│     |         MASUKAN PASSWORD ADMIN              |      │
+│     |                                             |      │
+│     |     [ ********************************* ]   |      │
+│     |                                             |      │
+│     |______________[ UNLOCK ]_____________________|      │
 │                                                          │
-│     Percobaan: 1/5  │  Ter kunci: 00:30                 │
+│     Percobaan: 1/5  │  Ter kunci: 00:30                  │
 │                                                          │
 └──────────────────────────────────────────────────────────┘
 ```

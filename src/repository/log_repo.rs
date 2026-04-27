@@ -302,4 +302,42 @@ impl LogRepository {
             .all(&self.db)
             .await
     }
+
+    /// Get blocked count for last N days (simplified - returns total blocked)
+    pub async fn get_blocked_count(&self, _days: i64) -> Result<i64, DbErr> {
+        let count = LogEntity::find()
+            .filter(crate::models::log_entity::Column::Action.eq("blocked"))
+            .count(&self.db)
+            .await?;
+        Ok(count as i64)
+    }
+
+    /// Get top blocked processes
+    pub async fn get_top_blocked(&self, limit: usize) -> Result<Vec<(String, i64)>, DbErr> {
+        let logs = self.find_by_action("blocked").await?;
+        let mut counts: std::collections::HashMap<String, i64> = std::collections::HashMap::new();
+        for log in logs {
+            *counts.entry(log.process_name).or_insert(0) += 1;
+        }
+        let mut vec: Vec<_> = counts.into_iter().collect();
+        vec.sort_by_key(|b| std::cmp::Reverse(b.1));
+        vec.truncate(limit);
+        Ok(vec)
+    }
+
+    /// Get audit logs with filter
+    pub async fn get_audit_logs_filtered(
+        &self,
+        user: Option<&str>,
+        limit: usize,
+    ) -> Result<Vec<AuditLog>, DbErr> {
+        let mut query = AuditLogEntity::find()
+            .order_by_desc(crate::models::log_entity::audit_log::Column::Timestamp);
+
+        if let Some(u) = user {
+            query = query.filter(crate::models::log_entity::audit_log::Column::Username.eq(u));
+        }
+
+        query.limit(limit as u64).all(&self.db).await
+    }
 }
