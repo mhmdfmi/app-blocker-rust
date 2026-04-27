@@ -18,10 +18,10 @@ autentikasi Argon2id, dan audit logging terstruktur.
 
 | Fitur                    | Detail                                                            |
 | ------------------------ | ----------------------------------------------------------------- |
-| **Monitoring Real-time** | Scan proses setiap 1.5–2 detik via sysinfo                        |
+| **Monitoring Real-time** | Scan proses setiap 2 detik via sysinfo                            |
 | **Overlay Win32**        | Fullscreen, topmost, tidak bisa ditutup, GDI rendering            |
-| **Auth Argon2id**        | Hash bcrypt-grade, rate limiting, lockout 5 menit                 |
-| **Jadwal Blokir**        | Senin–Jumat 07:00–15:00, Sabtu 07:00–12:00 (WIB)                  |
+| **Auth Argon2id**        | Hash argon2id, rate limiting, lockout 5 menit                     |
+| **Jadwal Blokir**        | Senin–Jumat 07:00-15:00, Sabtu 07:00-12:00 (WIB)                  |
 | **Bypass Detection**     | Rename exe, USB execution, portable app                           |
 | **Behavior Scoring**     | CPU spike, rapid spawn, suspicious path, hidden process           |
 | **Safe Kill**            | Tidak pernah kill proses sistem (winlogon, csrss, explorer, dll.) |
@@ -34,13 +34,13 @@ autentikasi Argon2id, dan audit logging terstruktur.
 
 ## Lokasi Data
 
-Semua data disimpan di `C:\Users\<username>\AppData\Local\AppBlocker\`:
+Semua data disimpan di `C:\Users\<user>\AppData\Local\AppBlocker\`:
 
-| Folder      | Isi                            |
-|------------|--------------------------------|
-| `db/`      | Database SQLite (`core.db`)        |
-| `logs/`    | Log aplikasi (`app_blocker.log`)  |
-| `reports/` | Audit reports (`audit_*.jsonl`) |
+| Folder     | Isi                              |
+| ---------- | -------------------------------- |
+| `db/`      | Database SQLite (`core.db`)      |
+| `logs/`    | Log aplikasi (`app_blocker.log`) |
+| `reports/` | Audit reports (`audit_*.jsonl`)  |
 
 ---
 
@@ -49,127 +49,102 @@ Semua data disimpan di `C:\Users\<username>\AppData\Local\AppBlocker\`:
 - **OS**: Windows 10 / Windows 11 (x86_64)
 - **Rust**: 1.70+ (`rustup update stable`)
 - **Privilege**: Administrator (untuk kill proses dan install service)
-- **Vc Redist x86_64**: Dibutuhkan untuk execute file
 
 ---
 
-## Instalasi Cepat
+##Instalasi
 
-### Opsi 1: Prototype (Tanpa Build)
-
-Untuk menjalankan prototype tanpa build dari source:
-
-1. Unduh atau salin file `app_blocker.exe` ke direktori pilihan, contoh:
-   `C:\AppBlocker`
-2. Salin folder `config` yang berisi `default.toml` dan `production.toml` ke
-   direktori yang sama: `C:\AppBlocker\config`
-3. Jalankan program:
+### Build dari Source
 
 ```powershell
-# Opsi 1
-# Lewat script (tanpa window log)
-.\scripts\running_service.ps1
-
-# Opsi 2
-# Buat sebagai task schedule
-.\script\task_scheduler.bat
-
-# Opsi 3
-# Atau langsung via executable
-.\app_blocker.exe run-production
-```
-
-### Opsi 2: Build dari Source
-
-```powershell
-# Clone atau ekstrak proyek
-cd app_blocker
+# Clone project
+git clone https://github.com/mhmdfmi/app-blocker-rust.git
+cd app_blocker-rust
 
 # Build release
 cargo build --release
 
-# Binary ada di: target\release\app_blocker.exe
+# Output: target/release/app_blocker.exe
 ```
 
-### 2. Instalasi sebagai Windows Service
+###Setup Awal (Pertama Kali)
+
+```powershell
+# Jalankan untuk inisialisasi database
+.\target\release\app_blocker.exe run-production
+```
+
+Akan membuat:
+
+- Database: `AppData\Local\AppBlocker\db\core.db`
+- Tabel: configs, blacklists, whitelists, schedules, users, logs, audit_logs
+- Config di-seed dari `config/default.toml`
+
+###Install sebagai Service (Opsional)
 
 ```powershell
 # Jalankan sebagai Administrator
 .\scripts\install_service.ps1
 ```
 
-Script ini akan:
-
-- Menyalin binary ke `C:\AppBlocker\`
-- Mendaftarkan Windows Service dengan auto-restart
-- Generate hash password default `Admin12345!`
-
-### 3. Setup Password Admin
+###Setup Password
 
 ```powershell
-# Ganti password default (WAJIB!)
-.\target\release\app_blocker.exe reset-password
+# WAJIBdiganti setelah instalasi!
+.\target\release\app_blocker.exe setup-password
 ```
+
+Default password: `Admin12345!`
 
 ---
 
 ## Penggunaan CLI
 
 ```powershell
-app_blocker.exe [PERINTAH] [OPSI]
+app_blocker.exe [PERINTAH]
 ```
 
-| Perintah                                               | Deskripsi                        |
-| ------------------------------------------------------ | -------------------------------- |
-| `enable`                                               | Aktifkan pemblokiran             |
-| `disable`                                              | Nonaktifkan darurat              |
-| `status`                                               | Status sistem saat ini           |
-| `logs -n 100`                                          | Tampilkan 100 baris log terakhir |
-| `setup-password`                                       | Setup password pertama kali      |
-| `reset-password`                                       | Reset password admin             |
-| `list-blacklist`                                       | Daftar aplikasi yang diblokir    |
-| `add-blacklist --name game.exe --app-name "Nama Game"` | Tambah ke blacklist              |
-| `remove-blacklist game.exe`                            | Hapus dari blacklist             |
-| `list-whitelist`                                       | Daftar whitelist                 |
-| `add-whitelist chrome.exe`                             | Tambah ke whitelist              |
-| `simulation-mode true`                                 | Aktifkan mode simulasi           |
-| `run-simulation`                                       | Jalankan dalam mode simulasi     |
-| `run-production`                                       | Jalankan dalam mode produksi     |
-| `version`                                              | Info versi dan build             |
+| Perintah         | Deskripsi              |
+| ---------------- | ---------------------- |
+| `status`         | Status sistem          |
+| `enable`         | Aktifkan pemblokiran   |
+| `disable`        | Nonaktifkan darurat    |
+| `logs -n 100`    | Tampilkan log terakhir |
+| `setup-password` | Setup password         |
+| `reset-password` | Reset password         |
+| `list-blacklist` | Daftar diblokir        |
+| `list-whitelist` | Daftar whitelist       |
+| `run-simulation` | Jalankan simulasi      |
+| `run-production` | Jalankan produksi      |
+| `version`        | Info versi             |
 
 ---
 
 ## Konfigurasi
 
-Edit `config/default.toml`:
+Edit `config/default.toml` lalu restart:
 
 ```toml
 [app]
 mode = "production"
-startup_delay_seconds = 15
 
 [monitoring]
 scan_interval_ms = 2000
 
 [schedule]
 enabled = true
-timezone = "Asia/Jakarta"
 
 [[schedule.rules]]
 days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
 start = "07:00"
 end = "15:00"
 action = "block_games"
-```
 
-### Tambah Game ke Blacklist
-
-```toml
 [[blocking.blacklist]]
-name = "Nama Game"
+name = "Game Baru"
 process_names = ["game.exe"]
-paths = ["C:\\Games\\NamaGame\\"]
-description = "Deskripsi game"
+paths = ["C:\\Games\\"]
+description = "Deskripsi"
 ```
 
 ---
@@ -177,142 +152,134 @@ description = "Deskripsi game"
 ## Arsitektur
 
 ```
-app_blocker/
-├── src/
-│   ├── core/           # Engine, monitor, state machine, events, watchdog
-│   ├── detection/      # Game detector, behavior scorer, bypass, schedule
-│   ├── ui/             # Win32 overlay, GDI rendering, input handler
-│   ├── security/       # Argon2 auth, SHA-256 integrity, memory zeroing
-│   ├── system/         # Process Win32, user info, keyboard hooks, service
-│   ├── config/         # Settings, env loader, hot reload, validator
-│   ├── utils/          # Error (thiserror), logger (tracing), time, retry
-│   └── constants/      # Pesan UI Bahasa Indonesia, path sistem
+src/
+├── main.rs              # Entry point
+├── lib.rs              # Library exports
+├── cli.rs             # CLI commands (clap)
+├── bootstrap.rs        # Initialization
+├── core/
+│   ├── engine.rs       # Event handler, state machine
+│   ├── monitor.rs     # Process scanner
+│   ├── state.rs      # State management
+│   ├── events.rs     # Event definitions
+│   ├── watchdog.rs   # Thread health
+│   └── audit.rs     # JSON audit
+├── detection/
+│   ├── mod.rs        # DetectionEngine
+│   ├── game.rs      # Game matching
+│   ├── behavior.rs  # Behavior scoring
+│   ├── bypass.rs   # Bypass detection
+│   └── schedule.rs # Schedule
+├── ui/
+│   ├── overlay.rs   # GDI overlay
+│   ├── window.rs   # Window
+│   └── input.rs   # Input
+├── security/
+│   ├── auth.rs     # Argon2id
+│   └── integrity.rs # Checksums
+├── system/
+│   ├── process.rs  # Win32 APIs
+│   ├── service.rs  # Service
+│   └── student_mode.rs
 ├── config/
-│   ├── default.toml    # Konfigurasi default
-│   └── production.toml # Konfigurasi produksi
-├── examples/ # Contoh File Konfigurasi
-└── scripts/
-    ├── install_service.ps1
-    ├── uninstall_service.ps1
-    └── running_service.ps1
+│   ├── settings.rs
+│   └── hot_reload.rs
+├── repository/    # DAL
+│   └── *repo.rs
+├── models/       # Data models
+├── db/
+│   ├── connection.rs
+│   ├── init.rs    # Schema
+└── utils/
+    ├── error.rs
+    └── logger.rs
+```
+
+### Struktur Database
+
+```sql
+-- core.db (SQLite)
+configs      -- key, value, description
+blacklists    -- name, process_names (JSON), paths, description
+whitelists   -- name, process_names (JSON)
+schedules    -- days (JSON), start_time, end_time, action
+users       -- username, password_hash, role
+
+logs         -- timestamp, process_name, action, reason, score
+audit_logs  -- timestamp, event_type, details (JSON), success
 ```
 
 ### Alur Data
 
 ```
-Monitor Thread (TX)
-    │ scan proses setiap N ms
-    │ kirim ProcessDetected event
-    ▼
-Engine Thread (RX)
-    │ handle event, transisi state
-    │ kill proses via Win32 API
-    │ trigger overlay callback
-    ▼
-UI Thread
-    │ tampilkan Win32 overlay fullscreen
-    │ tunggu input password
-    │ verifikasi via Argon2
-    │ kirim UnlockSuccess/Failed event
-    ▼
-Engine Thread
-    │ terima UnlockSuccess
-    │ transisi ke Recovering → Monitoring
-    ▼
+MONITOR THREAD
+  │ scan setiap 2 detik
+  │ cek schedule aktif
+  │ │ProcessDetected
+  ▼
+ENGINE THREAD
+  │ handle event
+  │ kill process (Win32)
+  │ trigger overlay
+  │ audit (JSON + DB)
+  │ │OverlayCallback
+  ▼
+UI THREAD
+  │ display overlay
+  │ verify password
+  │ │UnlockSuccess
+  ▼
 (kembali ke monitoring)
 
-Watchdog Thread (parallel)
-    │ pantau heartbeat semua thread
-    │ restart thread yang mati
-    └ force SafeMode jika gagal restart
+WATCHDOG (parallel)
+  │ receive heartbeat
+  │ restart if dead
+  ▼
 ```
 
 ### State Machine
 
 ```
-Monitoring ──(proses terdeteksi)──► Blocking
-Blocking   ──(kill berhasil)──────► Locked
-Locked     ──(unlock berhasil)────► Recovering
-Recovering ──(cleanup selesai)────► Monitoring
-any        ──(error kritis)───────► SafeMode
-SafeMode   ──(manual recovery)────► Monitoring
+Monitoring → Blocking → Locked → Recovering → Monitoring
+                ↓
+              SafeMode (on error)
 ```
-
----
-
-## Keamanan
-
-- **Password**: Hash Argon2id, tidak pernah disimpan plaintext
-- **Memory**: Data sensitif di-zero saat drop (zeroize crate)
-- **Anti-bypass**: Deteksi rename, USB, portable app, debugger
-- **Safe kill**: Daftar protected processes tidak bisa dihentikan
-- **Integrity**: SHA-256 self-hash dan config hash
-- **Single instance**: Lock file mencegah duplikasi
-- **Disable flag**: File `C:\AppBlocker\disable` untuk emergency stop
-
----
-
-## Default Password
-
-**`Admin12345!`**
-
-> ⚠️ **WAJIB ganti segera setelah instalasi!**
->
-> ```powershell
-> app_blocker.exe reset-password
-> ```
 
 ---
 
 ## Disable Darurat
 
-Jika sistem perlu dihentikan segera tanpa akses CLI:
+Buat file kosong:
 
-1. Buat file kosong: `C:\AppBlocker\disable`
-2. App Blocker otomatis masuk SafeMode dalam 2 detik
-3. Hapus file untuk mengaktifkan kembali
+```
+AppData\Local\AppBlocker\disable
+```
+
+App masuk SafeMode dalam 2 detik.
+
+---
+
+## Keamanan
+
+- **Password**: Argon2id hash, tidak plaintext
+- **Memory**: Zero on drop
+- **Safe Kill**: Protected processes tidak dihentikan
+- **Single Instance**: Mencegah duplikasi
 
 ---
 
 ## Testing
 
 ```powershell
-# Jalankan semua unit test
 cargo test --all
-
-# Test dengan output verbose
-cargo test --all -- --nocapture
-
-# Test spesifik
-cargo test auth_tests
-cargo test state_tests
-cargo test engine_tests
-```
-
----
-
-## Uninstalasi
-
-```powershell
-# Uninstalasi lengkap
-.\scripts\uninstall_service.ps1
-
-# Pertahankan log
-.\scripts\uninstall_service.ps1 -KeepLogs
-
-# Tanpa konfirmasi
-.\scripts\uninstall_service.ps1 -Force
 ```
 
 ---
 
 ## Lisensi
 
-MIT License — Lihat [LICENSE](LICENSE)
+MIT - Lihat [LICENSE](LICENSE)
 
 ---
 
-## Credit
-
-_Dikembangkan oleh **Muhamad Fahmi**, Asisten Kepala Lab Komputer_
-_This program was developed by Muhamad Fahmi, Assistant Head of the Computer Lab._
+_Created by Muhamad Fahmi, Assistant Head of Computer Lab_
