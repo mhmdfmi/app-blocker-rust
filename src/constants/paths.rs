@@ -2,12 +2,40 @@
 /// Menggunakan path relatif terhadap direktori kerja (working directory) agar bisa dipindahkan.
 use std::path::PathBuf;
 
+/// Nama folder aplikasi di AppData
+pub const APP_FOLDER_NAME: &str = "AppBlocker";
+
 /// Get the base directory - ALWAYS uses the directory where the exe is located
 /// Ini memastikan app bisa dijalankan dari mana saja (bukan dari working directory).
 pub fn get_app_dir() -> PathBuf {
     std::env::current_exe()
         .map(|p| p.parent().unwrap_or(&p).to_path_buf())
         .unwrap_or_else(|_| PathBuf::from("."))
+}
+
+/// Get AppData folder path (user's local app data)
+/// Returns: C:\Users\<username>\AppData\Local\AppBlocker
+pub fn get_appdata_dir() -> PathBuf {
+    dirs::data_local_dir()
+        .map(|p| p.join(APP_FOLDER_NAME))
+        .unwrap_or_else(|| get_app_dir().join("data"))
+}
+
+/// Get database path in AppData
+pub fn get_db_path() -> PathBuf {
+    get_appdata_dir().join("core.db")
+}
+
+/// Get config path in AppData
+pub fn get_config_path() -> PathBuf {
+    get_appdata_dir().join("config.toml")
+}
+
+/// Ensure AppData directory exists
+pub fn ensure_appdata_dir() -> std::io::Result<PathBuf> {
+    let dir = get_appdata_dir();
+    std::fs::create_dir_all(&dir)?;
+    Ok(dir)
 }
 
 /// Direktori log aplikasi

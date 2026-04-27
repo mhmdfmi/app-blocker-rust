@@ -49,3 +49,8 @@ desktop.ini
 *.ilk
 
 AppBlockerLogReporttest/
+
+# FOR UPDATE 1.2.0
+planning update 1.2.0.json
+TODO.md
+.blackboxrules

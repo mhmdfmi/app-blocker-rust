@@ -1,16 +1,19 @@
 /// Entry point App Blocker v1.1.3
 /// Fix: Arc::try_unwrap anti-pattern, ctrlc real handler, config watcher thread,
 ///      student mode, audit logger, ConfigManager di engine.
+/// Update: Semua config dari database, tanpa .env / TOML
 use app_blocker_lib::{
     cli::{run_command, Cli, Commands},
-    config::{env_loader, hot_reload::spawn_config_watcher, ConfigManager},
+    config::{hot_reload::spawn_config_watcher, DbConfigLoader},
     constants::paths,
     core::{
         audit::{init_global_audit, AuditEntry, AuditEventKind},
         monitor::MonitorThread,
         AppEngine, AppEvent, StateManager, WatchdogThread,
     },
+    db::init::init_database,
     metrics::AppMetrics,
+    repository::ConfigRepository,
     security::{
         auth::{Argon2AuthService, AuthManager, DEFAULT_PASSWORD},
         integrity::IntegrityService,
@@ -62,19 +65,51 @@ fn main() {
 }
 
 fn startup(cli: Cli) -> AppResult<()> {
+    // ── 0. Ensure AppData directory exists ───────────────────────
+    let _appdata_dir = paths::ensure_appdata_dir()
+        .map_err(|e| AppError::Config(format!("Failed to create AppData dir: {}", e)))?;
+    info!(path = %paths::get_appdata_dir().display(), "AppData directory ready");
+
+    // ── 0.1. Initialize Database (AppData) ────────────────────────
+    // Initialize DB and preload config to memory cache for fast access
+    info!("Initializing database...");
+    let rt = tokio::runtime::Runtime::new()?;
+    let _db_config_cache = rt
+        .block_on(async {
+            let db = app_blocker_lib::db::init::init_database(&paths::get_db_path())
+                .await
+                .map_err(|e| AppError::Database(e.to_string()))?;
+            let loader = app_blocker_lib::config::DbConfigLoader::new_with_load(db.clone())
+                .await
+                .map_err(|e| AppError::Config(e.to_string()))?;
+            Ok::<_, AppError>(loader.get_arc())
+        })
+        .map_err(|e| AppError::Config(format!("DB init failed: {}", e)))?;
+    info!("Database initialized - config loaded to memory cache");
+
     // ── 1. Load .env ──────────────────────────────────────────────────────────
     let env_path = Path::new(paths::ENV_FILE);
     let env_vars = env_loader::load_env(env_path)?;
 
     // ── 2. Load konfigurasi ───────────────────────────────────────────────────
-    // Resolve ke absolute path agar working directory tidak masalah
-    let config_path = if cli.config.is_absolute() {
+    // First check AppData config path
+    let appdata_config_path = paths::get_config_path();
+
+    // Resolve config path: AppData > CLI > default
+    let config_path = if appdata_config_path.exists() {
+        appdata_config_path.clone()
+    } else if cli.config.is_absolute() || cli.config.exists() {
         cli.config.clone()
     } else {
-        std::env::current_dir()
-            .map(|p| p.join(&cli.config))
-            .unwrap_or_else(|_| cli.config.clone())
+        // Create default config in AppData
+        info!(path = %appdata_config_path.display(), "Creating default config in AppData");
+        if let Err(e) = create_default_config(&appdata_config_path) {
+            warn!(error = %e, "Failed to create default config");
+        }
+        // Fallback to embedded default
+        std::path::Path::new("config/default.toml").to_path_buf()
     };
+
     let config_mgr = Arc::new(ConfigManager::load(&config_path)?);
     let config = config_mgr.get()?;
     let config_arc = config_mgr.get_arc();
@@ -360,4 +395,11 @@ fn startup(cli: Cli) -> AppResult<()> {
 
     info!("App Blocker shutdown selesai.");
     Ok(())
+}
+
+/// Create default config file in AppData directory
+/// Uses embedded config/default.toml content
+fn create_default_config(path: &std::path::Path) -> std::io::Result<()> {
+    const DEFAULT_CONFIG: &str = include_str!("../config/default.toml");
+    std::fs::write(path, DEFAULT_CONFIG)
 }

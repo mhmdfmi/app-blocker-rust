@@ -9,6 +9,10 @@ pub enum AppError {
     #[error("Kesalahan konfigurasi: {0}")]
     Config(String),
 
+    /// Error terkait database
+    #[error("Kesalahan database: {0}")]
+    Database(String),
+
     /// Error terkait autentikasi
     #[error("Kesalahan autentikasi: {0}")]
     Auth(String),

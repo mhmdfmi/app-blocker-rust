@@ -1,8 +1,11 @@
 /// Modul konfigurasi dengan hot reload dan validasi otomatis.
+pub mod db_loader;
 pub mod env_loader;
 pub mod hot_reload;
 pub mod settings;
 pub mod validator;
+
+pub use db_loader::DbConfigLoader;
 
 use crate::utils::error::{AppError, AppResult};
 use settings::AppConfig;

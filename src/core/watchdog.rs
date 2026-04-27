@@ -90,6 +90,9 @@ impl WatchdogThread {
         let mut health = HashMap::new();
         health.insert(ComponentId::Monitor, ComponentHealth::new());
         health.insert(ComponentId::Engine, ComponentHealth::new());
+        health.insert(ComponentId::UiOverlay, ComponentHealth::new());
+        health.insert(ComponentId::Watchdog, ComponentHealth::new());
+        health.insert(ComponentId::ConfigWatcher, ComponentHealth::new());
 
         Self {
             event_tx,
