@@ -259,6 +259,256 @@ App masuk SafeMode dalam 2 detik.
 
 ---
 
+## UI Overlay
+
+Saat aplikasi terlarang terdeteksi, overlay fullscreen akan muncul:
+
+```
+┌──────────────────────────────────────────────────────────┐
+│                                                          │
+│                    ⚠️ AKSES DIBLOKIR ⚠️                  │
+│                                                          │
+│            Aplikasi berikut diblokir:                    │
+│                                                          │
+│               [Nama Proses] - Roblox                    │
+│                                                          │
+│               PC: LAB-KOMPUTER-01                        │
+│               Waktu: 07:45:23                           │
+│                                                          │
+│     _______________________________________________      │
+│     |                                             |     │
+│     |         MASUKAN PASSWORD ADMIN           |     │
+│     |                                             |     │
+│     |     [ ********************************* ]  |     │
+│     |                                             |     │
+│     |______________[ UNLOCK ]___________________|     │
+│                                                          │
+│     Percobaan: 1/5  │  Ter kunci: 00:30                 │
+│                                                          │
+└──────────────────────────────────────────────────────────┘
+```
+
+**Fitur UI:**
+
+- Fullscreen, topmost, tidak bisa di-minimize
+- Background gelap transparan
+- Input password unified (tidak ada karakter terlihat)
+- Timeout auto-unlock 30 menit (failsafe)
+- Tampilkan: nama proses, PC name, timestamp, attempt counter
+
+---
+
+## Format Log
+
+Log tersimpan di `AppData\Local\AppBlocker\logs\app_blocker.log`:
+
+### Log Baris Contoh
+
+```json
+{"timestamp":"2026-04-27T07:45:23.123Z","level":"INFO","message":"App Blocker v1.2.0 dimulai","version":"1.2.0","mode":"production","db_path":"C:\\Users\\fahmi\\AppData\\Local\\AppBlocker\\db\\core.db"}
+
+{"timestamp":"2026-04-27T07:45:25.456Z","level":"INFO","message":"Monitor thread dimulai"}
+
+{"timestamp":"2026-04-27T07:45:30.789Z","level":"INFO","message":"Total proses yang terdeteksi: 128"}
+
+{"timestamp":"2026-04-27T07:45:32.012Z","level":"WARN","message":"Komponen tidak responsif","component":"ConfigWatcher","missed":3,"restarts":0}
+
+{"timestamp":"2026-04-27T07:45:33.345Z","level":"ERROR","message":"Thread mati terdeteksi","component":"UiOverlay","reason":"missed_heartbeat"}
+```
+
+### Cara Baca Log
+
+| Level | Arti                |
+| ----- | ------------------- |
+| INFO  | Event normal        |
+| WARN  | Peringatan          |
+| ERROR | Error kritis        |
+| DEBUG | Debug (jika detail) |
+
+### Contoh Pencarian
+
+```powershell
+# Cari semua blocked
+Select-String -Path "app_blocker.log" -Pattern "blocked"
+
+# Cari error hari ini
+Select-String -Path "app_blocker.log" -Pattern "ERROR"
+
+# Proses tertentu
+Select-String -Path "app_blocker.log" -Pattern "Roblox"
+```
+
+---
+
+## Backup & Restore
+
+### Backup Database
+
+```powershell
+# Copy database
+Copy-Item "$env:APPDATA\AppBlocker\db\core.db" "backup_core.db"
+
+# Copy config
+Copy-Item "config\default.toml" "backup_config.toml"
+```
+
+### Backup Lengkap
+
+```powershell
+# Backup semua data
+$backupDir = "AppBlocker_Backup_$(Get-Date -Format 'yyyyMMdd_HHmmss')"
+New-Item -ItemType Directory -Path $backupDir
+
+Copy-Item "$env:APPDATA\AppBlocker\db" "$backupDir\db"
+Copy-Item "$env:APPDATA\AppBlocker\logs" "$backupDir\logs"
+Copy-Item "$env:APPDATA\AppBlocker\reports" "$backupDir\reports"
+Copy-Item "config\default.toml" "$backupDir\"
+
+Write-Host "Backup ke: $backupDir"
+```
+
+### Restore
+
+```powershell
+# Stop service
+Stop-Service AppBlocker -ErrorAction SilentlyContinue
+
+# Restore database
+Copy-Item "backup_core.db" "$env:APPDATA\AppBlocker\db\core.db"
+
+# Start service
+Start-Service AppBlocker
+```
+
+### Reset ke Default
+
+```powershell
+# Hapus database (akan dibuat ulang saat start)
+Remove-Item "$env:APPDATA\AppBlocker\db\core.db"
+
+# Restart
+.\app_blocker.exe run-production
+```
+
+---
+
+## Performa & Batas Sistem
+
+### Batas yang Direkomendasikan
+
+| Komponen      | Batas             |
+| ------------- | ----------------- |
+| CPU usage     | < 20%             |
+| Memory        | < 200 MB          |
+| Proses discan | ~100-200 per scan |
+| Scan interval | 2000ms (default)  |
+
+### Thread Usage
+
+| Thread   | Fungsi                   |
+| -------- | ------------------------ |
+| Main     | Event loop, CLI          |
+| Monitor  | Scan proses (1 thread)   |
+| Engine   | Event handler (1 thread) |
+| Watchdog | Health check (1 thread)  |
+| UI       | Overlay (1 thread)       |
+
+**Total: ~5 threads**
+
+### Kapasitas Database
+
+- **logs**: ~10.000 baris per hari (estimasi)
+- **audit_logs**: ~1.000 baris per hari
+- **Monitoring**: Tidak ada batasan proses
+
+---
+
+## Troubleshooting
+
+### Error: "Database locked"
+
+```powershell
+# Hapus lock file
+Remove-Item "$env:APPDATA\AppBlocker\db\core.db-wal" -ErrorAction SilentlyContinue
+Remove-Item "$env:APPDATA\AppBlocker\db\core.db-shm" -ErrorAction SilentlyContinue
+
+# Restart
+.\app_blocker.exe run-production
+```
+
+### Error: "Single instance already running"
+
+```powershell
+# Cek proses yang berjalan
+Get-Process | Where-Object {$_.Name -like "*app_blocker*"}
+
+# Atau cek lock file
+Test-Path "$env:APPDATA\AppBlocker\app.lock"
+```
+
+### Error: "Access denied" saat kill proses
+
+```powershell
+# Jalankan sebagai Administrator
+Start-Process cmd -ArgumentList "/c app_blocker.exe" -Verb RunAs
+```
+
+### Overlay tidak muncul
+
+1. **Cek schedule aktif**: Pastikan jam sekarang dalam range jadwal blokir
+2. **Cek state**: Jalankan `app_blocker.exe status`
+3. **Cek log**: Lihat error di `logs/app_blocker.log`
+
+### Proses tidak diblokir
+
+1. **Cek blacklist**: `app_blocker.exe list-blacklist`
+2. **Cek schedule**: Pastikan `schedule.enabled = true`
+3. **Cek log**: Cari "process detected" di log
+4. **Cek mode**: Pastikan `mode = "production"` bukan `"simulation"`
+
+### Watchdog error "Thread mati"
+
+Biasanya false positive, sudah diperbaiki di v1.2.0. Jika masih terjadi:
+
+- Update ke versi terbaru
+- Cek log untuk error lain
+
+---
+
+## FAQ
+
+**Q: Apa bedanya Simulation vs Production?**
+A: Simulation hanya logging, tidak kill proses. Gunakan untuk testing.
+
+**Q: Kenapa overlay tidak muncul saat proses diblokir?**
+A: Cek schedule aktif (harus dalam jam blokir), atau cek state dengan `status`.
+
+**Q: Bagaimana reset ke config default?**
+A: Hapus database, jalankan ulang aplikasi.
+
+**Q: Apakah bisa running tanpa service?**
+A: Ya, langsung jalankan `.\app_blocker.exe run-production`
+
+**Q: Berapa lama untuk auto-unlock jika lupa password?**
+A: Failsafe timeout 30 menit (konfigurasi di config).
+
+**Q: Bisakah dimintai dari luar lab?**
+A: Tidak, aplikasi berjalan lokal di setiap PC.
+
+**Q: Bagaimana cara menambah game baru?**
+A: Edit `config/default.toml`, tambah ke section `[[blocking.blacklist]]`, lalu restart.
+
+**Q: Apakah log bisa dihapus otomatis?**
+A: Ya,rotasi harian. Semua log > 7 hari bisa dihapus manual.
+
+**Q: Password default tidak bisa?**
+A: Pastikan dijalankan sebagai Administrator, atau reset dengan `setup-password`.
+
+**Q: App startup lambat?**
+A: Normal, ada delay 5 detik untuk whitelist process scan.
+
+---
+
 ## Keamanan
 
 - **Password**: Argon2id hash, tidak plaintext
