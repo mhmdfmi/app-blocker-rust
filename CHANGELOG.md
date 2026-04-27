@@ -26,6 +26,9 @@ dan [Semantic Versioning](https://semver.org/lang/id/).
   - `reports/` - Audit reports
 - **Log ke Database** — Logs proses (detected, blocked, allowed) sekarang
   disimpan ke tabel `logs` di database.
+- **Runtime Metrics** (`src/metrics.rs`) — Menambahkan sistem metrik runtime
+  dengan counter proses yang discan, dikill, overlay triggered, auth attempts,
+  dan error count untuk observability internal.
 
 ### Diperbarui
 

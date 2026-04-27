@@ -207,6 +207,7 @@ src/
 ├── lib.rs              # Library exports
 ├── cli.rs             # CLI commands (clap)
 ├── bootstrap.rs        # Initialization
+├── metrics.rs          # Runtime metrics (scanned, killed, overlay, auth, errors)
 ├── core/
 │   ├── engine.rs       # Event handler, state machine
 │   ├── monitor.rs     # Process scanner
