@@ -30,6 +30,7 @@ use tracing::{info, warn};
 
 /// Database Config Loader
 /// Loads configuration from SQLite database and provides in-memory cache
+#[derive(Clone)]
 pub struct DbConfigLoader {
     db: DatabaseConnection,
     config_cache: Arc<RwLock<AppConfig>>,

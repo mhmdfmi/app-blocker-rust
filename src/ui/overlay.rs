@@ -1,7 +1,10 @@
 /// Overlay fullscreen Win32 menggunakan GDI.
-/// Topmost, tidak bisa ditutup, blokir Alt+F4 dan Escape.
+/// Topmost, tidak bisa关闭, blokir Alt+F4 dan Escape.
 /// Fix: WM_TIMER ID 99 (close setelah unlock), failsafe timeout, semua imports lengkap.
+/// Update: Menambahkan heartbeat ke watchdog untuk监控 UI overlay.
 use crate::core::events::AppEvent;
+use crate::core::events::ComponentId;
+use crate::core::watchdog::send_watchdog_heartbeat;
 use crate::security::auth::{AuthManager, AuthStatus};
 use crate::ui::components::{theme, CardLayout, DisplayData};
 #[cfg(target_os = "windows")]
@@ -154,8 +157,9 @@ fn run_overlay_win32(
         failsafe_minutes
     );
 
-    // Message loop
+    // Message loop - kirim heartbeat setiap 1 detik ke watchdog
     let mut msg = MSG::default();
+    let mut last_hb = std::time::Instant::now();
     loop {
         let r = unsafe { GetMessageW(&mut msg, None, 0, 0) };
         if r.0 <= 0 {
@@ -164,6 +168,11 @@ fn run_overlay_win32(
         unsafe {
             let _ = TranslateMessage(&msg);
             DispatchMessageW(&msg);
+        }
+        // Kirim heartbeat setiap 1 detik
+        if last_hb.elapsed().as_millis() >= 1000 {
+            send_watchdog_heartbeat(ComponentId::UiOverlay);
+            last_hb = std::time::Instant::now();
         }
     }
 
@@ -800,6 +809,9 @@ fn run_overlay_stub(
     event_tx: Sender<AppEvent>,
     trace_id: Uuid,
 ) -> AppResult<()> {
+    // Kirim heartbeat untuk watchdog
+    send_watchdog_heartbeat(ComponentId::UiOverlay);
+
     info!(%trace_id, "[SIMULASI] Overlay: proses '{}' (PID {})",
         display.process_name, display.pid);
 

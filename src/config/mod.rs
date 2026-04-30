@@ -1,11 +1,13 @@
 /// Modul konfigurasi dengan hot reload dan validasi otomatis.
 pub mod db_loader;
+pub mod db_reload_watcher;
 pub mod env_loader;
 pub mod hot_reload;
 pub mod settings;
 pub mod validator;
 
 pub use db_loader::DbConfigLoader;
+pub use db_reload_watcher::spawn_db_config_watcher_with_loader;
 
 use crate::utils::error::{AppError, AppResult};
 use settings::AppConfig;

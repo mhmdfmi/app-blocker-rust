@@ -40,10 +40,11 @@ use std::{
     },
     time::Duration,
 };
+use tokio::runtime::Runtime;
 use tracing::{error, info, warn};
 
 fn main() {
-    let cli = Cli::parse();
+    let cli: Cli = Cli::parse();
 
     if let Some(cmd) = &cli.command {
         match cmd {
@@ -68,14 +69,14 @@ fn main() {
 
 fn startup(cli: Cli) -> AppResult<()> {
     // ── 0. Ensure AppData directory exists ───────────────────────
-    let _appdata_dir = paths::ensure_appdata_dir()
+    let _appdata_dir: PathBuf = paths::ensure_appdata_dir()
         .map_err(|e| AppError::Config(format!("Failed to create AppData dir: {}", e)))?;
     info!(path = %paths::get_appdata_dir().display(), "AppData directory ready");
 
     // ── 1. Initialize Database + Load ALL Config from DB ──────────────────
     // Semua config dari database - tidak ada .env / TOML
     info!("Initializing database and loading config...");
-    let rt = tokio::runtime::Runtime::new()?;
+    let rt: Runtime = tokio::runtime::Runtime::new()?;
 
     // Init DB dan load semua config ke memory cache
     let (_db, config_arc, password_hash) = rt
@@ -84,9 +85,9 @@ fn startup(cli: Cli) -> AppResult<()> {
                 .await
                 .map_err(|e| AppError::Database(e.to_string()))?;
 
-            let loader = DbConfigLoader::new_with_load(db.clone())
+            let loader: DbConfigLoader = DbConfigLoader::new_with_load(db.clone())
                 .await
-                .map_err(|e| AppError::Config(e.to_string()))?;
+                .map_err(|e: AppError| AppError::Config(e.to_string()))?;
 
             // Ambil password hash dari DB (atau generate jika belum ada)
             let config_repo = ConfigRepository::new(db.clone());
@@ -169,7 +170,7 @@ fn startup(cli: Cli) -> AppResult<()> {
 
     // Password hash sudah di-load dari async block pertama
 
-    let auth_svc = Argon2AuthService::new(password_hash)?;
+    let auth_svc: Argon2AuthService = Argon2AuthService::new(password_hash)?;
     let auth_manager_shared: Arc<Mutex<AuthManager>> = Arc::new(Mutex::new(AuthManager::new(
         Box::new(auth_svc),
         config.security.max_auth_attempts,
@@ -177,14 +178,14 @@ fn startup(cli: Cli) -> AppResult<()> {
     )));
 
     // ── 8. Inisialisasi state manager ─────────────────────────────────────────
-    let state_manager = Arc::new(StateManager::new());
+    let state_manager: Arc<StateManager> = Arc::new(StateManager::new());
 
     // ── 9. Metrics ────────────────────────────────────────────────────────────
-    let _metrics = AppMetrics::new();
+    let _metrics: Arc<AppMetrics> = AppMetrics::new();
 
     // ── 10. Shutdown flag + Ctrl+C handler ───────────────────────────────────
     // FIX: ctrlc real implementation (bukan stub)
-    let shutdown_flag = Arc::new(AtomicBool::new(false));
+    let shutdown_flag: Arc<AtomicBool> = Arc::new(AtomicBool::new(false));
     {
         let sf = Arc::clone(&shutdown_flag);
         ctrlc::set_handler(move || {
@@ -195,7 +196,7 @@ fn startup(cli: Cli) -> AppResult<()> {
     }
 
     // ── 11. Startup delay ────────────────────────────────────────────────────
-    let delay = if config.simulation.enabled {
+    let delay: u64 = if config.simulation.enabled {
         0
     } else {
         config.app.startup_delay_seconds.min(5)

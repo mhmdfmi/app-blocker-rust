@@ -90,7 +90,9 @@ impl WatchdogThread {
         let mut health = HashMap::new();
         health.insert(ComponentId::Monitor, ComponentHealth::new());
         health.insert(ComponentId::Engine, ComponentHealth::new());
-        // UiOverlay, ConfigWatcher, Watchdog tidak dipantau karena tidak selalu berjalan
+        health.insert(ComponentId::ConfigWatcher, ComponentHealth::new());
+        health.insert(ComponentId::UiOverlay, ComponentHealth::new());
+        // Watchdog tidak dipantau karena tidak selalu berjalan
 
         Self {
             event_tx,
@@ -117,6 +119,8 @@ impl WatchdogThread {
         let mut health = HashMap::new();
         health.insert(ComponentId::Monitor, ComponentHealth::new());
         health.insert(ComponentId::Engine, ComponentHealth::new());
+        health.insert(ComponentId::ConfigWatcher, ComponentHealth::new());
+        health.insert(ComponentId::UiOverlay, ComponentHealth::new());
 
         let wd = Self {
             event_tx,

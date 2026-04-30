@@ -13,7 +13,7 @@
 //! ```
 
 use crate::config::settings::AppConfig;
-use crate::config::DbConfigLoader;
+use crate::config::{spawn_db_config_watcher_with_loader, DbConfigLoader};
 use crate::constants::paths;
 // IMPORTS FOR CONFIGURED COMPONENTS:
 use crate::core::events::ComponentId;
@@ -369,6 +369,18 @@ impl Application {
     /// Reload configuration from database
     pub async fn reload_config(&self) -> AppResult<()> {
         self.config_loader.reload().await
+    }
+
+    /// Start database config watcher (polling-based auto-reload)
+    /// Ini akan mem spawn thread yang memantau perubahan config di database
+    /// dan mengirim event ConfigReloaded saat ada perubahan terdeteksi.
+    pub fn start_config_watcher(
+        &self,
+        shutdown_flag: Arc<std::sync::atomic::AtomicBool>,
+    ) -> AppResult<()> {
+        // Clone DbConfigLoader (now derives Clone) and wrap in Arc
+        let loader_arc = Arc::new(self.config_loader.clone());
+        spawn_db_config_watcher_with_loader(loader_arc, Some(self.event_tx.clone()), shutdown_flag)
     }
 
     /// Send heartbeat for a specific component to watchdog
