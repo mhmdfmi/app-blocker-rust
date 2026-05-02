@@ -6,6 +6,7 @@
 /// Note: Pastikan database sudah terinisialisasi dengan benar sebelum menjalankan aplikasi.
 use app_blocker_lib::{
     cli::{run_command, Cli, Commands},
+    config::db_reload_watcher::spawn_db_config_watcher_with_loader,
     config::DbConfigLoader,
     constants::paths,
     core::{
@@ -78,29 +79,27 @@ fn startup(cli: Cli) -> AppResult<()> {
     info!("Initializing database and loading config...");
     let rt: Runtime = tokio::runtime::Runtime::new()?;
 
-    // Init DB dan load semua config ke memory cache
-    let (_db, config_arc, password_hash) = rt
+    // Init DB dan load semua config ke memory cache dengan single async block
+    let (_db, config_arc, password_hash, _config_loader_internal) = rt
         .block_on(async {
             let db = init_database(&paths::get_db_path())
                 .await
                 .map_err(|e| AppError::Database(e.to_string()))?;
 
-            let loader: DbConfigLoader = DbConfigLoader::new_with_load(db.clone())
+            let loader = DbConfigLoader::new_with_load(db.clone())
                 .await
-                .map_err(|e: AppError| AppError::Config(e.to_string()))?;
+                .map_err(|e| AppError::Config(e.to_string()))?;
 
             // Ambil password hash dari DB (atau generate jika belum ada)
             let config_repo = ConfigRepository::new(db.clone());
             let password_hash = match config_repo.get_value("security.password_hash").await {
                 Ok(Some(hash)) if !hash.is_empty() => hash,
                 _ => {
-                    // Generate hash baru dari default password
                     info!(
                         "Password hash belum ada di DB, generate dari default password {}...",
                         DEFAULT_PASSWORD
                     );
                     let (_svc, hash) = Argon2AuthService::with_default_password()?;
-                    // Simpan ke DB
                     let _ = config_repo
                         .set("security.password_hash", &hash, Some("Admin password hash"))
                         .await;
@@ -110,9 +109,12 @@ fn startup(cli: Cli) -> AppResult<()> {
 
             info!("Config loaded from database - password hash ready");
 
-            Ok::<_, AppError>((db, loader.get_arc(), password_hash))
+            Ok::<_, AppError>((db, loader.get_arc(), password_hash, loader))
         })
         .map_err(|e| AppError::Config(format!("DB init failed: {}", e)))?;
+
+    // Wrap config_loader untuk DB watcher
+    let config_loader = Arc::new(_config_loader_internal);
 
     // Ambil config dari Arc
     let config = config_arc
@@ -123,12 +125,22 @@ fn startup(cli: Cli) -> AppResult<()> {
     // ── 2. Inisialisasi logger ────────────────────────────────────────────────
     // Log level dari DB, fallback ke "info"
     let log_level = config.logging.level.clone();
-    // Gunakan path dari config, atau fallback ke AppData
-    let log_dir = if config.logging.path.starts_with("C:\\") || config.logging.path.starts_with("/")
+    // Gunakan path dari config jika valid, atau fallback ke AppData
+    // Juga override path lama C:\AppBlocker\logs agar menggunakan AppData
+    let custom_path = &config.logging.path;
+    let log_dir = if (custom_path.starts_with("C:\\") || custom_path.starts_with("/"))
+        && !custom_path.contains("AppData")
     {
-        PathBuf::from(&config.logging.path)
-    } else {
+        // Override path lama C:\AppBlocker\logs ke AppData
+        if custom_path == r"C:\AppBlocker\logs" {
+            paths::get_logs_dir()
+        } else {
+            PathBuf::from(custom_path)
+        }
+    } else if custom_path.is_empty() {
         paths::get_logs_dir()
+    } else {
+        PathBuf::from(custom_path)
     };
     init_logger(&log_dir, &log_level)?;
 
@@ -353,10 +365,19 @@ fn startup(cli: Cli) -> AppResult<()> {
             .map_err(|e| AppError::System(format!("Spawn watchdog: {e}")))?;
     }
 
-    // ── 19. Config reload via DB ────────────────────────────────────────────
-    // Config dari database - TOML file watcher tidak diperlukan
-    // Untuk reload config: call DbConfigLoader::reload() atau CLI/API
+    // ── 19. Spawn DB Config Watcher ─────────────────────────────────────────
+    // Database config watcher untuk auto-reload saat config berubah di database
+    // Polling setiap 5 detik, auto-reload + validasi + event ke engine
+    {
+        let loader = Arc::clone(&config_loader);
+        let sf = Arc::clone(&shutdown_flag);
+        // Spawn watcher - tidak perlu event_tx karena config sudah di-cache di loader
+        if let Err(e) = spawn_db_config_watcher_with_loader(loader, None, sf) {
+            warn!(error = %e, "Gagal spawn DB config watcher - non-fatal, continue");
+        }
+    }
 
+    // ── 20. Main thread: tunggu shutdown ─────────────────────────────────────
     info!("Semua thread berjalan. App Blocker aktif.");
     info!(
         "Tekan Ctrl+C atau buat file '{}' untuk berhenti.",

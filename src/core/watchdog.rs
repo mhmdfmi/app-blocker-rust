@@ -86,13 +86,13 @@ impl WatchdogThread {
         let (hb_tx, hb_rx) = std::sync::mpsc::channel();
         // Simpan tx ke static agar komponen bisa kirim heartbeat - perbaikan utama
         let _ = HEARTBEAT_TX.set(hb_tx);
-
         let mut health = HashMap::new();
         health.insert(ComponentId::Monitor, ComponentHealth::new());
         health.insert(ComponentId::Engine, ComponentHealth::new());
-        health.insert(ComponentId::ConfigWatcher, ComponentHealth::new());
-        health.insert(ComponentId::UiOverlay, ComponentHealth::new());
-        // Watchdog tidak dipantau karena tidak selalu berjalan
+        // ConfigWatcher and UiOverlay are registered lazily on first heartbeat
+        // received in the run() loop - see lines ~160-165. Pre-registering them
+        // caused false-positive "thread mati" when schedule-toggle disables
+        // monitoring so no ProcessDetected event fires (no UiOverlay spawns).
 
         Self {
             event_tx,
@@ -119,8 +119,7 @@ impl WatchdogThread {
         let mut health = HashMap::new();
         health.insert(ComponentId::Monitor, ComponentHealth::new());
         health.insert(ComponentId::Engine, ComponentHealth::new());
-        health.insert(ComponentId::ConfigWatcher, ComponentHealth::new());
-        health.insert(ComponentId::UiOverlay, ComponentHealth::new());
+        // ConfigWatcher and UiOverlay registered lazily on first heartbeat in run()
 
         let wd = Self {
             event_tx,
@@ -153,6 +152,11 @@ impl WatchdogThread {
                 if let Some(h) = self.health.get_mut(&component) {
                     h.record_heartbeat();
                     debug!(component = %component, "Heartbeat diterima");
+                } else {
+                    // Lazy registration for new components (ConfigWatcher, UiOverlay)
+                    self.health
+                        .insert(component.clone(), ComponentHealth::new());
+                    debug!(component = %component, "Heartbeat - lazy registration");
                 }
             }
 

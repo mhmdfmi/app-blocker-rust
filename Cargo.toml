@@ -1,6 +1,6 @@
 [package]
 name = "app_blocker"
-version = "1.2.0"
+version = "1.2.1"
 edition = "2021"
 authors = ["Muhamad Fahmi <muhamadfahmi3240@gmail.com>"]
 description = "Production-ready Windows App Blocker - real-time monitoring, secure process termination, overlay lock UI, authentication, audit logging"

@@ -22,6 +22,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::Sender;
 use std::sync::Arc;
 use std::time::Duration;
+use tokio::runtime::Builder;
 use tracing::{debug, error, info, warn};
 
 /// Spawn DB config watcher dengan DbConfigLoader untuk auto-reload config
@@ -68,11 +69,18 @@ fn run_db_watcher_with_loader(
     event_tx: Option<Sender<AppEvent>>,
     shutdown_flag: Arc<AtomicBool>,
 ) -> AppResult<()> {
+    // BUAT TOKIO RUNTIME BARU - gunakan builder dengan current_thread agar tidak bentrok dengan reactor utama
+    // Ini lebih aman karena tidak membutuhkan multi-threaded scheduler untuk operasi simpel ini
+    let rt = Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .map_err(|e| AppError::System(format!("Gagal buat Tokio runtime: {}", e)))?;
+
     let db = loader.db().clone();
     let config_repo = ConfigRepository::new(db);
 
-    // Get initial timestamp untuk comparison
-    let mut last_timestamps = match get_all_config_timestamps(&config_repo) {
+    // Get initial timestamp untuk comparison (dengan runtime baru)
+    let mut last_timestamps = match get_all_config_timestamps(&rt, &config_repo) {
         Ok(ts) => ts,
         Err(e) => {
             error!(error = %e, "Gagal load initial config timestamps - watcher unable to start");
@@ -96,23 +104,22 @@ fn run_db_watcher_with_loader(
             break;
         }
 
-        // Kirim heartbeat ke watchdog - untuk监控 komponen ini
+        // Kirim heartbeat ke watchdog
         send_watchdog_heartbeat(ComponentId::ConfigWatcher);
 
         // Sleep sesuai interval
         std::thread::sleep(poll_interval);
 
-        // Cek perubahan
-        match check_config_changes(&config_repo, &mut last_timestamps) {
+        // Cek perubahan (gunakan runtime baru)
+        match check_config_changes(&rt, &config_repo, &mut last_timestamps) {
             Ok(true) => {
                 // Perubahan terdeteksi!
                 if last_reload.elapsed() >= debounce {
                     last_reload = std::time::Instant::now();
                     info!("Perubahan config database terdeteksi, memulai reload...");
 
-                    // RELOAD CONFIG DENGAN VALIDASI
-                    let reload_result =
-                        tokio::runtime::Handle::current().block_on(async { loader.reload().await });
+                    // RELOAD CONFIG DENGAN VALIDASI (pakai runtime baru)
+                    let reload_result = rt.block_on(async { loader.reload().await });
 
                     // Handle result dengan validasi dan error logging
                     match reload_result {
@@ -144,7 +151,6 @@ fn run_db_watcher_with_loader(
                                 error = %e,
                                 "Config reload gagal - mempertahankan config lama (rollback)"
                             );
-                            // Tidak perlu kirim event karena config tidak berubah
                         }
                     }
                 }
@@ -163,13 +169,14 @@ fn run_db_watcher_with_loader(
     Ok(())
 }
 
-/// Get semua config timestamps dari database
+/// Get semua config timestamps dari database (pakai runtime)
 fn get_all_config_timestamps(
+    rt: &tokio::runtime::Runtime,
     repo: &ConfigRepository,
 ) -> AppResult<std::collections::HashMap<String, String>> {
-    let configs = tokio::runtime::Handle::current()
-        .block_on(repo.find_all())
-        .map_err(|e| AppError::Database(format!("Find all configs: {e}")))?;
+    let configs = rt
+        .block_on(async { repo.find_all().await })
+        .map_err(|e| AppError::Database(format!("Find all configs: {}", e)))?;
 
     let mut timestamps = std::collections::HashMap::new();
     for config in configs {
@@ -179,17 +186,18 @@ fn get_all_config_timestamps(
     Ok(timestamps)
 }
 
-/// Cek apakah ada perubahan config
+/// Cek apakah ada perubahan config (pakai runtime)
 fn check_config_changes(
+    rt: &tokio::runtime::Runtime,
     repo: &ConfigRepository,
     last_timestamps: &mut std::collections::HashMap<String, String>,
 ) -> AppResult<bool> {
-    // Get all configs dari DB
-    let configs = tokio::runtime::Handle::current()
-        .block_on(repo.find_all())
+    // Get all configs dari DB (pakai runtime)
+    let configs = rt
+        .block_on(async { repo.find_all().await })
         .map_err(|e| AppError::Database(format!("Find all configs: {}", e)))?;
 
-    // Cek setiap config (iterate over reference to avoid move)
+    // Cek setiap config
     for config in &configs {
         let key = config.key.clone();
         let new_timestamp = config.updated_at.clone();

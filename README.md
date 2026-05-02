@@ -4,7 +4,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Rust](https://img.shields.io/badge/Rust-1.70%2B-orange.svg)](https://www.rust-lang.org)
 [![Platform](https://img.shields.io/badge/Platform-Windows%2010%2F11-blue.svg)](https://www.microsoft.com/windows)
-[![Version](https://img.shields.io/badge/Version-1.2.0-green.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/Version-1.2.1-green.svg)](CHANGELOG.md)
 
 > **Dikembangkan oleh Muhamad Fahmi — Asisten Kepala Lab Komputer**
 
@@ -26,7 +26,8 @@ autentikasi Argon2id, dan audit logging terstruktur.
 | **Behavior Scoring**     | CPU spike, rapid spawn, suspicious path, hidden process           |
 | **Safe Kill**            | Tidak pernah kill proses sistem (winlogon, csrss, explorer, dll.) |
 | **Watchdog**             | Heartbeat monitoring, restart thread otomatis                     |
-| **Hot Reload**           | Konfigurasi bisa diperbarui tanpa restart                         |
+| **Hot Reload**           | Konfigurasi bisa diperbarui tanpa restart (DB-based)              |
+| **DB Config Watcher**    | Auto-reload config saat database berubah (polling 5 detik)        |
 | **Mode Simulasi**        | Test tanpa benar-benar membunuh proses                            |
 | **Windows Service**      | Install/uninstall via PowerShell, auto-restart                    |
 
@@ -356,7 +357,7 @@ Log tersimpan di `AppData\Local\AppBlocker\logs\app_blocker.log`:
 ### Log Baris Contoh
 
 ```json
-{"timestamp":"2026-04-27T07:45:23.123Z","level":"INFO","message":"App Blocker v1.2.0 dimulai","version":"1.2.0","mode":"production","db_path":"C:\\Users\\fahmi\\AppData\\Local\\AppBlocker\\db\\core.db"}
+{"timestamp":"2026-04-27T07:45:23.123Z","level":"INFO","message":"App Blocker v1.2.1 dimulai","version":"1.2.1","mode":"production","db_path":"C:\\Users\\fahmi\\AppData\\Local\\AppBlocker\\db\\core.db"}
 
 {"timestamp":"2026-04-27T07:45:25.456Z","level":"INFO","message":"Monitor thread dimulai"}
 
@@ -456,15 +457,16 @@ Remove-Item "$env:APPDATA\AppBlocker\db\core.db"
 
 ### Thread Usage
 
-| Thread   | Fungsi                   |
-| -------- | ------------------------ |
-| Main     | Event loop, CLI          |
-| Monitor  | Scan proses (1 thread)   |
-| Engine   | Event handler (1 thread) |
-| Watchdog | Health check (1 thread)  |
-| UI       | Overlay (1 thread)       |
+| Thread        | Fungsi                       |
+| ------------- | ---------------------------- |
+| Main          | Event loop, CLI              |
+| Monitor       | Scan proses (1 thread)       |
+| Engine        | Event handler (1 thread)     |
+| Watchdog      | Health check (1 thread)      |
+| UI            | Overlay (1 thread)           |
+| ConfigWatcher | DB config polling (1 thread) |
 
-**Total: ~5 threads**
+**Total: ~6 threads**
 
 ### Kapasitas Database
 
@@ -519,7 +521,7 @@ Start-Process cmd -ArgumentList "/c app_blocker.exe" -Verb RunAs
 
 ### Watchdog error "Thread mati"
 
-Biasanya false positive, sudah diperbaiki di v1.2.0. Jika masih terjadi:
+Biasanya false positive, sudah diperbaiki di v1.2.1. Jika masih terjadi:
 
 - Update ke versi terbaru
 - Cek log untuk error lain

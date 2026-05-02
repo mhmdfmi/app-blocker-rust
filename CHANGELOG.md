@@ -1,7 +1,39 @@
 # CHANGELOG
 
-Format mengikuti [Keep a Changelog](https://keepachangelog.com/id/1.0.0/)
+Format mengikuti [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 dan [Semantic Versioning](https://semver.org/lang/id/).
+
+---
+
+## [1.2.1] - 2026-04-30
+
+### Ditambahkan (New Features)
+
+- **DB Config Watcher** (`src/config/db_reload_watcher.rs`) — Menambahkan polling-based
+  monitoring untuk perubahan konfigurasi di database. Setiap 5 detik memeriksa
+  timestamp `updated_at` dari tabel configs, otomatis reload dan validasi config
+  baru tanpa restart aplikasi. Fallback ke config lama jika validasi gagal.
+- **Logging Path Improvements** — Logging path sekarang lebih fleksibel:
+  - Kosongkan path di config (`path = ""`) untuk menggunakan AppData default
+  - Override path lama `C:\AppBlocker\logs` ke AppData otomatis
+- **Watchdog Heartbeat untuk UI Overlay** — UI overlay sekarang mengirim heartbeat
+  ke watchdog setiap 1 detik untuk monitoring kesehatan komponen UI.
+- **Lazy Component Registration** — ConfigWatcher dan UiOverlay didaftarkan
+  ke watchdog secara lazy saat heartbeat pertama diterima, menghindari
+  false positive "thread mati" saat komponen belum berjalan.
+
+### Diperbaiki (Bug Fixes)
+
+- **UI Text Fix** — Menghapus leading spaces dari teks "PERINGATAN KEAMANAN"
+  agar rata kiri dengan elemen lainnya di overlay.
+- **CLI Version Command** — Memindahkan posisi command `Version` ke grup statistik
+  untuk konsistensi pengelompokan perintah.
+
+### Diperbarui
+
+- `.gitignore`: tambahkan `audit.json`
+- DbConfigLoader: tambahkan derive `Clone` untuk kompatibilitas dengan Arc
+- Main startup: cleanup dan improvement pada async block handling
 
 ---
 

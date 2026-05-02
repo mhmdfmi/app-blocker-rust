@@ -89,7 +89,9 @@ pub enum Commands {
     },
 
     /// Hapus dari whitelist
-    RemoveWhitelist { name: String },
+    RemoveWhitelist {
+        name: String,
+    },
 
     /// Daftar whitelist
     ListWhitelist,
@@ -119,9 +121,6 @@ pub enum Commands {
     /// Jalankan dengan mode produksi (kill proses sungguhan)
     RunProduction,
 
-    /// Tampilkan versi dan info build
-    Version,
-
     // ============ Statistik ============
     /// Statistik pemblokiran
     Stats {
@@ -129,6 +128,8 @@ pub enum Commands {
         #[arg(long, default_value = "week")]
         period: String,
     },
+
+    Version,
 
     /// Top proses paling sering diblokir
     TopBlocked {
@@ -215,9 +216,9 @@ pub fn run_command(_cli: &Cli, cmd: &Commands) {
         Commands::SimulationMode { enabled } => cmd_simulation_mode(*enabled),
         Commands::RunSimulation => cmd_run_simulation(),
         Commands::RunProduction => cmd_run_production(),
-        Commands::Version => cmd_version(),
 
         // Statistik
+        Commands::Version => cmd_version(),
         Commands::Stats { period } => cmd_stats(period),
         Commands::TopBlocked { limit } => cmd_top_blocked(*limit),
         Commands::AuditLog { user, limit } => cmd_audit_log(user.as_deref(), *limit),

@@ -1,6 +1,6 @@
 # App Blocker - Konfigurasi Default
 # Dikembangkan oleh Muhamad Fahmi, Asisten Kepala Lab Komputer
-# Versi: 1.1.3
+# Versi: 1.2.1
 
 [app]
 mode = "production"
@@ -86,7 +86,8 @@ show_pc_name = true
 show_attempt_counter = true
 
 [logging]
-path = "C:\\AppBlocker\\logs"
+# Path untuk logs - kosongkan agar menggunakan AppData\Local\AppBlocker\logs
+path = ""
 level = "info"
 rotation_days = 7
 structured = true

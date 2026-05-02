@@ -495,7 +495,7 @@ unsafe fn render_overlay(hwnd: windows::Win32::Foundation::HWND, state: &Overlay
     let (rr, rg, rb) = theme::RED_DANGER;
 
     draw_text(
-        "  PERINGATAN KEAMANAN",
+        "PERINGATAN KEAMANAN",
         card.x + 24,
         card.y + 18,
         22,
