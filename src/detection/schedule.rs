@@ -3,7 +3,7 @@ use crate::config::settings::ScheduleConfig;
 use crate::utils::error::{AppError, AppResult};
 use crate::utils::time::parse_day_name;
 use chrono::{Datelike, Local, NaiveTime, Timelike, Weekday};
-use tracing::{debug, warn};
+use tracing::{info, warn};
 
 /// Satu aturan jadwal yang sudah diparsing
 #[derive(Debug, Clone)]
@@ -62,7 +62,16 @@ impl ScheduleService {
             });
         }
 
-        debug!(rule_count = rules.len(), "Jadwal berhasil dimuat");
+        // INFO-level logging saat jadwal dimuat - ini penting untuk debug!
+        info!(
+            "Schedule dimuat: enabled={}, rules_count={}, rules={:?}",
+            true,
+            rules.len(),
+            rules
+                .iter()
+                .map(|r| format!("{:?} {}->{}", r.days, r.start, r.end))
+                .collect::<Vec<_>>()
+        );
         Ok(Self {
             enabled: true,
             rules,
@@ -72,29 +81,51 @@ impl ScheduleService {
     /// Apakah pemblokiran aktif pada waktu saat ini?
     pub fn is_blocking_active(&self) -> bool {
         if !self.enabled {
-            return true; // Jika jadwal disabled, selalu aktif
+            // Jika jadwal disabled, selalu aktif
+            info!("Schedule disabled, blocking aktif");
+            return true;
         }
 
         let now = Local::now();
         let weekday_num = weekday_to_num(now.weekday());
         let current_time = now.time();
 
+        // INFO-level logging untuk debug schedule - lihat ini di log!
+        info!(
+            "Schedule check: hari={} (Sabtu=5), waktu={}, schedule_enabled={}, rules_count={}",
+            weekday_num,
+            current_time,
+            self.enabled,
+            self.rules.len()
+        );
+
         for rule in &self.rules {
-            if rule.days.contains(&weekday_num)
-                && current_time >= rule.start
-                && current_time < rule.end
-                && rule.action.contains("block")
-            {
-                debug!(
-                    hari = weekday_num,
-                    waktu = %current_time,
-                    aturan = %rule.action,
-                    "Jadwal blokir aktif"
+            let day_match = rule.days.contains(&weekday_num);
+            let time_match = current_time >= rule.start && current_time < rule.end;
+            let action_match = rule.action.contains("block");
+
+            // Log setiap rule untuk debugging
+            info!(
+                "  Rule check: hari={:?}, start={}, end={}, action={}, day_match={}, time_match={}, action_match={}",
+                rule.days,
+                rule.start,
+                rule.end,
+                rule.action,
+                day_match,
+                time_match,
+                action_match
+            );
+
+            if day_match && time_match && action_match {
+                info!(
+                    "JADWAL BLOKIR AKTIF! hari={}, waktu={}, aturan={}",
+                    weekday_num, current_time, rule.action
                 );
                 return true;
             }
         }
 
+        info!("Jadwal blokir TIDAK aktif pada waktu ini");
         false
     }
 

@@ -1,12 +1,13 @@
 //! Database Initialization, Migration and Seeder
-//! Version: 1.2.0
+//! Version: 1.2.1
 
 use argon2::{
     password_hash::{PasswordHash, PasswordHasher, PasswordVerifier, SaltString},
     Argon2,
 };
 use rand::rngs::OsRng;
-use sea_orm::{ConnectionTrait, DatabaseConnection, DbErr};
+use sea_orm::{ConnectionTrait, DatabaseConnection, DbErr, TransactionTrait};
+
 use serde::Deserialize;
 use std::path::Path;
 use tracing::{error, info};
@@ -297,6 +298,7 @@ struct BlockingConfig {
     behavior_scoring_enabled: bool,
     score_threshold: u32,
     whitelist: Vec<String>,
+    blacklist: Vec<BlacklistItem>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -364,6 +366,10 @@ struct SimulationConfig {
 pub async fn seed_default_data(db: &DatabaseConnection) -> Result<(), DbErr> {
     info!("Seeding default data from config/default.toml...");
 
+    // Disable foreign key constraints during seeding to avoid constraint failures
+    // on existing databases that might have partial data
+    db.execute_unprepared("PRAGMA foreign_keys = OFF").await?;
+
     // Load config from default.toml
     let config_path = Path::new("config/default.toml");
     let toml_content = match std::fs::read_to_string(config_path) {
@@ -403,7 +409,7 @@ pub async fn seed_default_data(db: &DatabaseConnection) -> Result<(), DbErr> {
     seed_configs(db, &config).await?;
 
     // 3. Seed Blacklist
-    seed_blacklist(db, &toml_content).await?;
+    seed_blacklist(db, &config).await?;
 
     // 4. Seed Whitelist
     seed_whitelist(db, &config).await?;
@@ -693,117 +699,71 @@ async fn seed_config_key(
 }
 
 /// Parse and seed blacklist from TOML content
-async fn seed_blacklist(db: &DatabaseConnection, toml_content: &str) -> Result<(), DbErr> {
-    let blacklist_items = parse_blacklist_from_toml(toml_content);
+// Keterangan Perubahan (R021): Fix QueryResult.values() error; gunakan tx.query_one().try_get(\"\", \"id\"); area seed_blacklist; tes cargo check OK.
+// Tujuan: Kompilasi bersih, seeding atomic. Dampak: DB init aman. Tes: cargo check/build pass.
+async fn seed_blacklist(db: &DatabaseConnection, config: &TomlConfig) -> Result<(), DbErr> {
+    info!(
+        "Seeding blacklist from parsed config: {} items",
+        config.blocking.blacklist.len()
+    );
 
-    for (idx, item) in blacklist_items.iter().enumerate() {
-        // Insert blacklist entry
-        db.execute_unprepared(&format!(
-            "INSERT OR IGNORE INTO blacklist (id, name, description, enabled, created_at, updated_at) VALUES ({}, '{}', '{}', 1, datetime('now'), datetime('now'))",
-            idx + 1,
+    let tx = db.begin().await?;
+
+    tx.execute_unprepared("DELETE FROM blacklist_processes")
+        .await?;
+    tx.execute_unprepared("DELETE FROM blacklist_paths").await?;
+    tx.execute_unprepared("DELETE FROM blacklist").await?;
+
+    for item in &config.blocking.blacklist {
+        info!(
+            "  Seeding: {} - processes={:?}, paths={:?}",
+            item.name, item.process_names, item.paths
+        );
+
+        tx.execute_unprepared(&format!(
+            "INSERT INTO blacklist (name, description, category, risk_level, enabled, created_at, updated_at) VALUES ('{}', '{}', 'game', 'medium', 1, datetime('now'), datetime('now'))",
             item.name.replace("'", "''"),
             item.description.replace("'", "''")
         )).await?;
 
-        // Insert processes
+        let row_id_res = tx
+            .query_one(sea_orm::Statement::from_string(
+                sea_orm::DatabaseBackend::Sqlite,
+                "SELECT last_insert_rowid() as id",
+            ))
+            .await?;
+
+        let blacklist_id_i64: i64 = row_id_res
+            .ok_or(DbErr::Custom("No row ID returned".into()))?
+            .try_get("", "id")
+            .map_err(|e| DbErr::Custom(format!("Extract row ID failed: {}", e)))?;
+
+        let blacklist_id = blacklist_id_i64 as i32;
+
         for process in &item.process_names {
-            db.execute_unprepared(&format!(
-                "INSERT OR IGNORE INTO blacklist_processes (blacklist_id, process_name, created_at) VALUES ({}, '{}', datetime('now'))",
-                idx + 1,
+            tx.execute_unprepared(&format!(
+                "INSERT INTO blacklist_processes (blacklist_id, process_name, created_at) VALUES ({}, '{}', datetime('now'))",
+                blacklist_id,
                 process.replace("'", "''")
             )).await?;
         }
 
-        // Insert paths
         for path in &item.paths {
-            db.execute_unprepared(&format!(
-                "INSERT OR IGNORE INTO blacklist_paths (blacklist_id, path, created_at) VALUES ({}, '{}', datetime('now'))",
-                idx + 1,
+            tx.execute_unprepared(&format!(
+                "INSERT INTO blacklist_paths (blacklist_id, path, created_at) VALUES ({}, '{}', datetime('now'))",
+                blacklist_id,
                 path.replace("'", "''")
             )).await?;
         }
     }
 
+    tx.commit().await?;
+
+    info!("Blacklist seeding complete");
     Ok(())
 }
 
-/// Parse blacklist from TOML content
-fn parse_blacklist_from_toml(toml_content: &str) -> Vec<BlacklistItem> {
-    let mut items = Vec::new();
-    let mut current_name = String::new();
-    let mut current_desc = String::new();
-    let mut current_processes: Vec<String> = Vec::new();
-    let mut current_paths: Vec<String> = Vec::new();
-    let mut in_blacklist = false;
-
-    for line in toml_content.lines() {
-        let line = line.trim();
-
-        if line.starts_with("[[blocking.blacklist]]") {
-            in_blacklist = true;
-            current_name = String::new();
-            current_desc = String::new();
-            current_processes = Vec::new();
-            current_paths = Vec::new();
-        } else if line.starts_with("[[") && in_blacklist {
-            if !current_name.is_empty() {
-                items.push(BlacklistItem {
-                    name: current_name.clone(),
-                    description: current_desc.clone(),
-                    process_names: current_processes.clone(),
-                    paths: current_paths.clone(),
-                });
-            }
-            in_blacklist = false;
-        } else if in_blacklist {
-            if line.starts_with("name = ") {
-                current_name = extract_toml_value(line);
-            } else if line.starts_with("description = ") {
-                current_desc = extract_toml_value(line);
-            } else if line.starts_with("process_names = ") {
-                current_processes = parse_string_array(line);
-            } else if line.starts_with("paths = ") {
-                current_paths = parse_string_array(line);
-            }
-        }
-    }
-
-    if !current_name.is_empty() {
-        items.push(BlacklistItem {
-            name: current_name,
-            description: current_desc,
-            process_names: current_processes,
-            paths: current_paths,
-        });
-    }
-
-    items
-}
-
-fn extract_toml_value(line: &str) -> String {
-    line.split('=')
-        .nth(1)
-        .map(|s| s.trim().trim_matches('"').to_string())
-        .unwrap_or_default()
-}
-
-fn parse_string_array(line: &str) -> Vec<String> {
-    let content = line.split('=').nth(1).unwrap_or("[]");
-    let content = content.trim();
-
-    if content.starts_with('[') {
-        content
-            .trim_matches(|c| c == '[' || c == ']')
-            .split(',')
-            .map(|s| s.trim().trim_matches('"').to_string())
-            .filter(|s| !s.is_empty())
-            .collect()
-    } else {
-        Vec::new()
-    }
-}
-
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Deserialize)]
 struct BlacklistItem {
     name: String,
     description: String,
@@ -849,14 +809,12 @@ async fn seed_schedule(db: &DatabaseConnection, config: &TomlConfig) -> Result<(
 async fn seed_hardcoded_defaults(db: &DatabaseConnection) -> Result<(), DbErr> {
     info!("Seeding hardcoded defaults...");
 
-    // Admin user with password Admin12345!
     let admin_password_hash = "$argon2id$v=19$m=19456,t=2,p=1$phv4zmAQxu/cwVdRY9wgLg$441jRs24dn+kSxOf4K21qGzrsqb2rbtPsFdR5rvCMug";
     let _ = db.execute_unprepared(&format!(
         "INSERT OR IGNORE INTO users (username, password_hash, role) VALUES ('admin', '{}', 'admin')",
         admin_password_hash
     )).await;
 
-    // Default schedule
     let _ = db
         .execute_unprepared(
             "INSERT OR IGNORE INTO schedule (id, enabled, timezone) VALUES (1, 1, 'Asia/Jakarta')",

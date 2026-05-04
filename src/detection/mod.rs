@@ -80,9 +80,9 @@ impl DetectionEngine {
 
         // 1. Jadwal - di luar jam sekolah, skip
         let is_blocking = self.schedule_service.is_blocking_active();
-        debug!(name = %proc.name, blocking_active = is_blocking, "Schedule check");
+        info!(name = %proc.name, blocking_active = is_blocking, "Schedule check result");
         if !is_blocking {
-            debug!("Di luar jadwal blokir, monitoring saja");
+            info!("Di luar jadwal blokir, monitoring saja (tidak blokir)");
             return Ok(None);
         }
 

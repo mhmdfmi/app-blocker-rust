@@ -125,6 +125,18 @@ impl DbConfigLoader {
         // Load Blacklist from database
         match blacklist_repo.find_all_with_details().await {
             Ok(blacklists) => {
+                info!("Loaded {} blacklist items from database", blacklists.len());
+                for bl in &blacklists {
+                    info!(
+                        "  Blacklist: {} - enabled={}, processes={:?}",
+                        bl.blacklist.name,
+                        bl.blacklist.enabled,
+                        bl.processes
+                            .iter()
+                            .map(|p| &p.process_name)
+                            .collect::<Vec<_>>()
+                    );
+                }
                 app_config.blocking.blacklist = blacklists
                     .into_iter()
                     .map(|b| BlockedApp {
